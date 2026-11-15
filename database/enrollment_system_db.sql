@@ -1,584 +1,376 @@
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
---
--- Host: 127.0.0.1
--- Generation Time: Nov 11, 2026 at 12:32 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+CREATE DATABASE IF NOT EXISTS eltnhs_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE eltnhs_management;
+
+SET FOREIGN_KEY_CHECKS=0;
+DROP TABLE IF EXISTS grade_period_locks, user_notifications, password_reset_requests, student_registration_applications, assistance_distributions, scholarship_awards, scholarship_application_documents, scholarship_applications, scholarship_programs, scholarship_providers, announcements, attendance, grades, section_subjects, subjects, enrollment_documents, enrollments, class_sections, school_years, staff_profiles, students, teachers, users;
+SET FOREIGN_KEY_CHECKS=1;
+
+CREATE TABLE users (
+ user_id INT AUTO_INCREMENT PRIMARY KEY,
+ username VARCHAR(50) NOT NULL UNIQUE,
+ password_hash VARCHAR(255) NOT NULL,
+ role ENUM('System Administrator','School Registrar','Subject Teacher','Teacher Adviser','Scholarship Coordinator','Student') NOT NULL,
+ account_status ENUM('Active','Inactive','Locked') NOT NULL DEFAULT 'Active',
+ must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+ created_by INT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE teachers (
+ teacher_id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL UNIQUE,
+ employee_number VARCHAR(30) NOT NULL UNIQUE,
+ first_name VARCHAR(60) NOT NULL,
+ middle_name VARCHAR(60),
+ last_name VARCHAR(60) NOT NULL,
+ contact_number VARCHAR(20),
+ email VARCHAR(120),
+ employment_status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+ FOREIGN KEY (user_id) REFERENCES users(user_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE students (
+ student_lrn VARCHAR(15) PRIMARY KEY,
+ user_id INT NULL UNIQUE,
+ psa_birth_certificate_no VARCHAR(40),
+ last_name VARCHAR(60) NOT NULL,
+ first_name VARCHAR(60) NOT NULL,
+ middle_name VARCHAR(60),
+ extension_name VARCHAR(15),
+ birth_date DATE NOT NULL,
+ sex ENUM('Male','Female') NOT NULL,
+ place_of_birth VARCHAR(120),
+ religion VARCHAR(80),
+ mother_tongue VARCHAR(80),
+ is_ip_member TINYINT(1) NOT NULL DEFAULT 0,
+ is_4ps_beneficiary TINYINT(1) NOT NULL DEFAULT 0,
+ current_house_no VARCHAR(80),
+ current_street_sitio VARCHAR(120),
+ current_barangay VARCHAR(100),
+ current_municipality VARCHAR(100),
+ current_province VARCHAR(100),
+ current_country VARCHAR(80) DEFAULT 'Philippines',
+ current_zip_code VARCHAR(10),
+ permanent_same_as_current TINYINT(1) NOT NULL DEFAULT 1,
+ permanent_house_no VARCHAR(80),
+ permanent_street_sitio VARCHAR(120),
+ permanent_barangay VARCHAR(100),
+ permanent_municipality VARCHAR(100),
+ permanent_province VARCHAR(100),
+ permanent_country VARCHAR(80),
+ permanent_zip_code VARCHAR(10),
+ father_last_name VARCHAR(60),
+ father_first_name VARCHAR(60),
+ father_middle_name VARCHAR(60),
+ father_contact_number VARCHAR(20),
+ mother_maiden_last_name VARCHAR(60),
+ mother_maiden_first_name VARCHAR(60),
+ mother_maiden_middle_name VARCHAR(60),
+ mother_contact_number VARCHAR(20),
+ guardian_last_name VARCHAR(60),
+ guardian_first_name VARCHAR(60),
+ guardian_middle_name VARCHAR(60),
+ guardian_contact_number VARCHAR(20),
+ student_email VARCHAR(120), student_contact_number VARCHAR(20), parent_guardian_name VARCHAR(160), parent_guardian_relationship VARCHAR(80), parent_guardian_contact VARCHAR(20), parent_guardian_email VARCHAR(120), previous_school VARCHAR(180), last_grade_completed VARCHAR(30), last_school_year_attended VARCHAR(20), health_conditions VARCHAR(500), current_medications VARCHAR(500), special_medical_concerns VARCHAR(500), emergency_contact_name VARCHAR(120), emergency_contact_relationship VARCHAR(60), emergency_contact_number VARCHAR(20),
+ student_status ENUM('Active','Transferred','Graduated','Inactive') NOT NULL DEFAULT 'Active',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Public parent/guardian registration applications. Approval is handled by the Registrar.
+CREATE TABLE student_registration_applications (
+ application_id INT AUTO_INCREMENT PRIMARY KEY,
+ student_lrn VARCHAR(15) NOT NULL,
+ enrollment_category ENUM('Incoming','Returning','Transferee','Balik-Aral') NOT NULL,
+ application_data JSON NOT NULL,
+ application_status ENUM('For Verification','Approved','Rejected') NOT NULL DEFAULT 'For Verification',
+ registrar_notes VARCHAR(500),
+ submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ reviewed_by INT NULL,
+ reviewed_at DATETIME NULL,
+ INDEX idx_registration_lrn_status (student_lrn, application_status),
+ INDEX idx_registration_status_date (application_status, submitted_at),
+ FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE staff_profiles (
+ user_id INT PRIMARY KEY,
+ employee_number VARCHAR(30) NOT NULL UNIQUE,
+ first_name VARCHAR(60) NOT NULL,
+ middle_name VARCHAR(60),
+ last_name VARCHAR(60) NOT NULL,
+ address VARCHAR(255),
+ contact_number VARCHAR(20),
+ email VARCHAR(120),
+ employment_status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE school_years (
+ school_year_id INT AUTO_INCREMENT PRIMARY KEY,
+ school_year_name VARCHAR(20) NOT NULL UNIQUE,
+ start_date DATE,
+ end_date DATE,
+ year_status ENUM('Upcoming','Current','Completed') NOT NULL DEFAULT 'Upcoming'
+) ENGINE=InnoDB;
+
+CREATE TABLE class_sections (
+ section_id INT AUTO_INCREMENT PRIMARY KEY,
+ school_year_id INT NOT NULL,
+ grade_level ENUM('Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12') NOT NULL,
+ track VARCHAR(80),
+ strand VARCHAR(100),
+ section_name VARCHAR(50) NOT NULL,
+ capacity SMALLINT UNSIGNED NOT NULL,
+ adviser_teacher_id INT NULL,
+ section_status ENUM('Open','Full','Closed') NOT NULL DEFAULT 'Open',
+ UNIQUE (school_year_id, grade_level, strand, section_name),
+ FOREIGN KEY (school_year_id) REFERENCES school_years(school_year_id),
+ FOREIGN KEY (adviser_teacher_id) REFERENCES teachers(teacher_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- JHS: one Full Year enrollment per school year.
+-- SHS: separate First and Second semester enrollment records.
+CREATE TABLE enrollments (
+ enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
+ student_lrn VARCHAR(15) NOT NULL,
+ school_year_id INT NOT NULL,
+ grade_level ENUM('Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12') NOT NULL,
+ enrollment_category ENUM('Incoming','Returning','Transferee','Balik-Aral') NOT NULL,
+ semester ENUM('Full Year','First','Second') NOT NULL DEFAULT 'Full Year',
+ track VARCHAR(80),
+ strand VARCHAR(100),
+ last_grade_level_completed VARCHAR(20),
+ last_school_attended VARCHAR(180),
+ last_school_year_completed VARCHAR(20),
+ last_school_id VARCHAR(30),
+ section_id INT NULL,
+ enrollment_date DATE NOT NULL,
+ enrollment_status ENUM('Pending','Incomplete Requirements','For Verification','Temporarily Enrolled','Officially Enrolled','Rejected','Withdrawn','Completed') NOT NULL DEFAULT 'Pending',
+ final_result ENUM('Passed','Failed','INC','DRP') NULL,
+ reading_comprehension_status ENUM('Not Required','Pending','Passed','Failed') NOT NULL DEFAULT 'Pending',
+ guidance_assessment_status ENUM('Not Required','Pending','Passed','Failed') NOT NULL DEFAULT 'Pending',
+ guidance_assessment_date DATE NULL,
+ guidance_assessment_remarks VARCHAR(500),
+ guidance_assessed_by INT NULL,
+ guidance_approval_status ENUM('Not Required','Pending','Approved','Not Approved') NOT NULL DEFAULT 'Pending',
+ guidance_approved_by INT NULL,
+ guidance_approved_at DATETIME NULL,
+ processed_by INT NULL,
+ remarks VARCHAR(500),
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE (student_lrn, school_year_id, semester),
+ CONSTRAINT chk_enrollment_semester_by_grade CHECK (
+   (grade_level IN ('Grade 7','Grade 8','Grade 9','Grade 10') AND semester = 'Full Year')
+   OR
+   (grade_level IN ('Grade 11','Grade 12') AND semester IN ('First','Second'))
+ ),
+ FOREIGN KEY (student_lrn) REFERENCES students(student_lrn),
+ FOREIGN KEY (school_year_id) REFERENCES school_years(school_year_id),
+ FOREIGN KEY (section_id) REFERENCES class_sections(section_id) ON DELETE SET NULL,
+ FOREIGN KEY (processed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+ FOREIGN KEY (guidance_assessed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+ FOREIGN KEY (guidance_approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE enrollment_documents (
+ enrollment_document_id INT AUTO_INCREMENT PRIMARY KEY,
+ enrollment_id INT NOT NULL,
+ document_name VARCHAR(120) NOT NULL,
+ is_required TINYINT(1) NOT NULL DEFAULT 1,
+ file_path VARCHAR(255),
+ verification_status ENUM('Not Submitted','Pending','Accepted','Rejected','Not Required') NOT NULL DEFAULT 'Not Submitted',
+ verified_by INT NULL,
+ verified_at DATETIME,
+ remarks VARCHAR(255),
+ FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+ FOREIGN KEY (verified_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE subjects (
+ subject_id INT AUTO_INCREMENT PRIMARY KEY,
+ subject_code VARCHAR(20) NOT NULL UNIQUE,
+ subject_name VARCHAR(120) NOT NULL,
+ grade_level ENUM('Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12') NOT NULL,
+ subject_status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active'
+) ENGINE=InnoDB;
+
+CREATE TABLE section_subjects (
+ section_subject_id INT AUTO_INCREMENT PRIMARY KEY,
+ section_id INT NOT NULL,
+ subject_id INT NOT NULL,
+ teacher_id INT NULL,
+ semester ENUM('First','Second') NOT NULL,
+ schedule_days VARCHAR(40),
+ start_time TIME,
+ end_time TIME,
+ room VARCHAR(40),
+ UNIQUE (section_id, subject_id, semester),
+ FOREIGN KEY (section_id) REFERENCES class_sections(section_id),
+ FOREIGN KEY (subject_id) REFERENCES subjects(subject_id),
+ FOREIGN KEY (teacher_id) REFERENCES teachers(teacher_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE grades (
+ grade_id INT AUTO_INCREMENT PRIMARY KEY,
+ enrollment_id INT NOT NULL,
+ section_subject_id INT NOT NULL,
+ grading_period ENUM('Prelim','Midterm','Finals') NOT NULL,
+ grade_value DECIMAL(5,2),
+ remarks VARCHAR(100),
+ result_status ENUM('Passed','Failed','INC','DRP') NULL,
+ encoded_by INT NULL,
+ encoded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE (enrollment_id, section_subject_id, grading_period),
+ FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id),
+ FOREIGN KEY (section_subject_id) REFERENCES section_subjects(section_subject_id),
+ FOREIGN KEY (encoded_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Attendance is recorded for each student, subject, and date.
+-- The enrollment and section_subject must belong to the same student/section context;
+-- PHP must validate that relationship before inserting an attendance row.
+CREATE TABLE attendance (
+ attendance_id INT AUTO_INCREMENT PRIMARY KEY,
+ enrollment_id INT NOT NULL,
+ section_subject_id INT NOT NULL,
+ attendance_date DATE NOT NULL,
+ attendance_status ENUM('Present','Absent','Late','Excused') NOT NULL,
+ remarks VARCHAR(255),
+ recorded_by INT NULL,
+ recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE (enrollment_id, section_subject_id, attendance_date),
+ FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id),
+ FOREIGN KEY (section_subject_id) REFERENCES section_subjects(section_subject_id),
+ FOREIGN KEY (recorded_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE scholarship_providers (
+ provider_id INT AUTO_INCREMENT PRIMARY KEY,
+ provider_name VARCHAR(160) NOT NULL,
+ provider_type VARCHAR(80),
+ contact_person VARCHAR(120),
+ contact_number VARCHAR(30),
+ email VARCHAR(120),
+ website_url VARCHAR(255),
+ provider_status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+ created_by INT NULL,
+ FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE scholarship_programs (
+ program_id INT AUTO_INCREMENT PRIMARY KEY,
+ provider_id INT NOT NULL,
+ program_name VARCHAR(160) NOT NULL,
+ description TEXT,
+ eligibility_criteria TEXT,
+ required_documents TEXT,
+ benefits TEXT,
+ available_slots SMALLINT UNSIGNED,
+ application_start DATE,
+ application_deadline DATE,
+ application_method ENUM('School Managed','External Provider') NOT NULL,
+ external_application_url VARCHAR(255),
+ program_status ENUM('Draft','Published','Closed','Archived') NOT NULL DEFAULT 'Draft',
+ created_by INT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (provider_id) REFERENCES scholarship_providers(provider_id),
+ FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE scholarship_applications (
+ application_id INT AUTO_INCREMENT PRIMARY KEY,
+ program_id INT NOT NULL,
+ student_lrn VARCHAR(15) NOT NULL,
+ application_date DATE NOT NULL,
+ application_status ENUM('Pending','For Verification','Verified','Submitted to Provider','Approved','Rejected','Withdrawn') NOT NULL DEFAULT 'Pending',
+ decision_date DATE,
+ decision_reference VARCHAR(100),
+ remarks VARCHAR(500),
+ processed_by INT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE (program_id, student_lrn),
+ FOREIGN KEY (program_id) REFERENCES scholarship_programs(program_id),
+ FOREIGN KEY (student_lrn) REFERENCES students(student_lrn),
+ FOREIGN KEY (processed_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE scholarship_application_documents (
+ application_document_id INT AUTO_INCREMENT PRIMARY KEY,
+ application_id INT NOT NULL,
+ document_name VARCHAR(120) NOT NULL,
+ file_path VARCHAR(255),
+ verification_status ENUM('Not Submitted','Pending','Accepted','Rejected','Not Required') NOT NULL DEFAULT 'Not Submitted',
+ verified_by INT NULL,
+ verified_at DATETIME,
+ remarks VARCHAR(255),
+ FOREIGN KEY (application_id) REFERENCES scholarship_applications(application_id) ON DELETE CASCADE,
+ FOREIGN KEY (verified_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE scholarship_awards (
+ award_id INT AUTO_INCREMENT PRIMARY KEY,
+ application_id INT NOT NULL UNIQUE,
+ award_start_date DATE,
+ award_end_date DATE,
+ award_status ENUM('Active','For Renewal','Renewed','Completed','Discontinued') NOT NULL DEFAULT 'Active',
+ renewal_eligibility ENUM('Pending','Eligible','Not Eligible','Not Applicable') NOT NULL DEFAULT 'Pending',
+ academic_performance_remarks VARCHAR(500),
+ recorded_by INT NULL,
+ FOREIGN KEY (application_id) REFERENCES scholarship_applications(application_id),
+ FOREIGN KEY (recorded_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE assistance_distributions (
+ distribution_id INT AUTO_INCREMENT PRIMARY KEY,
+ award_id INT NOT NULL,
+ distribution_date DATE NOT NULL,
+ assistance_description VARCHAR(180) NOT NULL,
+ quantity_or_coverage VARCHAR(120),
+ remarks VARCHAR(255),
+ recorded_by INT NULL,
+ FOREIGN KEY (award_id) REFERENCES scholarship_awards(award_id),
+ FOREIGN KEY (recorded_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE announcements (
+ announcement_id INT AUTO_INCREMENT PRIMARY KEY,
+ title VARCHAR(160) NOT NULL,
+ content TEXT NOT NULL,
+ announcement_category ENUM('Enrollment','Scholarship','School','General') NOT NULL DEFAULT 'General',
+ target_audience ENUM('All','Students','Teachers','Registrar','Subject Teachers','Teacher Advisers') NOT NULL DEFAULT 'All',
+ publish_date DATETIME NOT NULL,
+ expiry_date DATETIME,
+ announcement_status ENUM('Draft','Published','Archived') NOT NULL DEFAULT 'Draft',
+ posted_by INT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (posted_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE password_reset_requests (
+ request_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, request_status ENUM('Pending','Completed','Rejected') NOT NULL DEFAULT 'Pending', requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reviewed_by INT NULL, reviewed_at DATETIME NULL, registrar_note VARCHAR(255), FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE, FOREIGN KEY(reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL, INDEX idx_reset_status(request_status,requested_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE user_notifications (
+ notification_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, title VARCHAR(160) NOT NULL, message VARCHAR(500) NOT NULL, notification_type ENUM('Announcement','Scholarship','Password Reset','System') NOT NULL DEFAULT 'System', related_url VARCHAR(255), is_read TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE, INDEX idx_user_notifications(user_id,is_read,created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE grade_period_locks (
+ lock_id INT AUTO_INCREMENT PRIMARY KEY, section_subject_id INT NOT NULL, grading_period ENUM('Prelim','Midterm','Finals') NOT NULL, locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, locked_by INT NULL, UNIQUE(section_subject_id,grading_period), FOREIGN KEY(section_subject_id) REFERENCES section_subjects(section_subject_id) ON DELETE CASCADE, FOREIGN KEY(locked_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_students_name ON students(last_name, first_name);
+CREATE INDEX idx_enrollments_year_grade ON enrollments(school_year_id, grade_level);
+CREATE INDEX idx_enrollments_status ON enrollments(enrollment_status);
+CREATE INDEX idx_grades_period ON grades(grading_period);
+CREATE INDEX idx_attendance_date ON attendance(attendance_date);
+CREATE INDEX idx_scholarship_app_status ON scholarship_applications(application_status);
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
 
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
 
---
--- Database: `enrollment_system_db`
---
-
--- --------------------------------------------------------
-
---
--- Table structure for table `academic_history`
---
-
-CREATE TABLE `academic_history` (
-  `history_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `school_year` varchar(20) NOT NULL,
-  `semester` varchar(20) NOT NULL,
-  `gpa` decimal(4,2) DEFAULT NULL,
-  `academic_standing` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `academic_history_details`
---
-
-CREATE TABLE `academic_history_details` (
-  `detail_id` int(11) NOT NULL,
-  `history_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `final_grade` decimal(5,2) NOT NULL,
-  `remarks` varchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `announcements`
---
-
-CREATE TABLE `announcements` (
-  `announcement_id` int(11) NOT NULL,
-  `posted_by` int(11) NOT NULL,
-  `title` varchar(150) NOT NULL,
-  `content` text NOT NULL,
-  `category` enum('Enrollment Announcement','Scholarship Deadline','School Announcement','Class Announcement') NOT NULL,
-  `target_audience` enum('All','Students','Parents','Class Section') NOT NULL,
-  `date_posted` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `attendance`
---
-
-CREATE TABLE `attendance` (
-  `attendance_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `section_id` int(11) NOT NULL,
-  `date` date NOT NULL,
-  `status` enum('Present','Absent','Late') NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `class_sections`
---
-
-CREATE TABLE `class_sections` (
-  `section_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `teacher_id` int(11) NOT NULL,
-  `school_year` varchar(20) NOT NULL,
-  `semester` varchar(20) NOT NULL,
-  `section_name` varchar(50) NOT NULL,
-  `schedule_details` varchar(100) NOT NULL,
-  `room` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `enrollments`
---
-
-CREATE TABLE `enrollments` (
-  `enrollment_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `enrolled_by` int(11) NOT NULL,
-  `school_year` varchar(20) NOT NULL,
-  `semester` varchar(20) NOT NULL,
-  `enrollment_status` enum('Temporarily Enrolled','Officially Enrolled') DEFAULT 'Temporarily Enrolled',
-  `requirements_status` enum('Complete','Incomplete/Missing') DEFAULT 'Incomplete/Missing',
-  `section_assigned` varchar(50) DEFAULT NULL,
-  `enrollment_date` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `scholarship_applications`
---
-
-CREATE TABLE `scholarship_applications` (
-  `application_id` int(11) NOT NULL,
-  `program_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `supporting_documents` text DEFAULT NULL,
-  `application_status` enum('Submitted','Under Verification','Approved','Rejected') DEFAULT 'Submitted',
-  `application_date` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `scholarship_monitoring`
---
-
-CREATE TABLE `scholarship_monitoring` (
-  `monitoring_id` int(11) NOT NULL,
-  `application_id` int(11) NOT NULL,
-  `scholarship_status` enum('Active','Suspended','Terminated','Completed') DEFAULT 'Active',
-  `renewal_eligibility` tinyint(1) DEFAULT 1,
-  `assistance_distribution` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `scholarship_programs`
---
-
-CREATE TABLE `scholarship_programs` (
-  `program_id` int(11) NOT NULL,
-  `provider_id` int(11) NOT NULL,
-  `program_name` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `eligibility_criteria` text DEFAULT NULL,
-  `slots_available` int(11) NOT NULL,
-  `deadline` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `scholarship_providers`
---
-
-CREATE TABLE `scholarship_providers` (
-  `provider_id` int(11) NOT NULL,
-  `provider_name` varchar(100) NOT NULL,
-  `contact_info` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `students`
---
-
-CREATE TABLE `students` (
-  `student_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `middle_name` varchar(50) DEFAULT NULL,
-  `last_name` varchar(50) NOT NULL,
-  `date_of_birth` date NOT NULL,
-  `gender` varchar(10) DEFAULT NULL,
-  `contact_number` varchar(20) DEFAULT NULL,
-  `address` text DEFAULT NULL,
-  `guardian_name` varchar(100) DEFAULT NULL,
-  `guardian_contact` varchar(20) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `student_classes`
---
-
-CREATE TABLE `student_classes` (
-  `student_class_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `section_id` int(11) NOT NULL,
-  `final_grade` decimal(5,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `student_quarterly_grades`
---
-
-CREATE TABLE `student_quarterly_grades` (
-  `quarter_grade_id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `school_year` varchar(20) NOT NULL,
-  `semester` varchar(20) NOT NULL,
-  `quarter` int(11) NOT NULL CHECK (`quarter` between 1 and 4),
-  `grade` decimal(5,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `subjects`
---
-
-CREATE TABLE `subjects` (
-  `subject_id` int(11) NOT NULL,
-  `subject_code` varchar(20) NOT NULL,
-  `subject_name` varchar(100) NOT NULL,
-  `units` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `teachers`
---
-
-CREATE TABLE `teachers` (
-  `teacher_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `middle_name` varchar(50) DEFAULT NULL,
-  `last_name` varchar(50) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `contact_number` varchar(20) DEFAULT NULL,
-  `department` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
-CREATE TABLE `users` (
-  `user_id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `role` enum('Admin','Scholarship Coordinator','Teacher','Student','Parent') NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `academic_history`
---
-ALTER TABLE `academic_history`
-  ADD PRIMARY KEY (`history_id`),
-  ADD KEY `student_id` (`student_id`);
-
---
--- Indexes for table `academic_history_details`
---
-ALTER TABLE `academic_history_details`
-  ADD PRIMARY KEY (`detail_id`),
-  ADD KEY `history_id` (`history_id`),
-  ADD KEY `subject_id` (`subject_id`);
-
---
--- Indexes for table `announcements`
---
-ALTER TABLE `announcements`
-  ADD PRIMARY KEY (`announcement_id`),
-  ADD KEY `posted_by` (`posted_by`);
-
---
--- Indexes for table `attendance`
---
-ALTER TABLE `attendance`
-  ADD PRIMARY KEY (`attendance_id`),
-  ADD KEY `student_id` (`student_id`),
-  ADD KEY `section_id` (`section_id`);
-
---
--- Indexes for table `class_sections`
---
-ALTER TABLE `class_sections`
-  ADD PRIMARY KEY (`section_id`),
-  ADD KEY `subject_id` (`subject_id`),
-  ADD KEY `teacher_id` (`teacher_id`);
-
---
--- Indexes for table `enrollments`
---
-ALTER TABLE `enrollments`
-  ADD PRIMARY KEY (`enrollment_id`),
-  ADD KEY `student_id` (`student_id`),
-  ADD KEY `enrolled_by` (`enrolled_by`);
-
---
--- Indexes for table `scholarship_applications`
---
-ALTER TABLE `scholarship_applications`
-  ADD PRIMARY KEY (`application_id`),
-  ADD KEY `program_id` (`program_id`),
-  ADD KEY `student_id` (`student_id`);
-
---
--- Indexes for table `scholarship_monitoring`
---
-ALTER TABLE `scholarship_monitoring`
-  ADD PRIMARY KEY (`monitoring_id`),
-  ADD KEY `application_id` (`application_id`);
-
---
--- Indexes for table `scholarship_programs`
---
-ALTER TABLE `scholarship_programs`
-  ADD PRIMARY KEY (`program_id`),
-  ADD KEY `provider_id` (`provider_id`);
-
---
--- Indexes for table `scholarship_providers`
---
-ALTER TABLE `scholarship_providers`
-  ADD PRIMARY KEY (`provider_id`);
-
---
--- Indexes for table `students`
---
-ALTER TABLE `students`
-  ADD PRIMARY KEY (`student_id`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Indexes for table `student_classes`
---
-ALTER TABLE `student_classes`
-  ADD PRIMARY KEY (`student_class_id`),
-  ADD KEY `student_id` (`student_id`),
-  ADD KEY `section_id` (`section_id`);
-
---
--- Indexes for table `student_quarterly_grades`
---
-ALTER TABLE `student_quarterly_grades`
-  ADD PRIMARY KEY (`quarter_grade_id`),
-  ADD KEY `student_id` (`student_id`),
-  ADD KEY `subject_id` (`subject_id`);
-
---
--- Indexes for table `subjects`
---
-ALTER TABLE `subjects`
-  ADD PRIMARY KEY (`subject_id`),
-  ADD UNIQUE KEY `subject_code` (`subject_code`);
-
---
--- Indexes for table `teachers`
---
-ALTER TABLE `teachers`
-  ADD PRIMARY KEY (`teacher_id`),
-  ADD UNIQUE KEY `email` (`email`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `academic_history`
---
-ALTER TABLE `academic_history`
-  MODIFY `history_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `academic_history_details`
---
-ALTER TABLE `academic_history_details`
-  MODIFY `detail_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `announcements`
---
-ALTER TABLE `announcements`
-  MODIFY `announcement_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `attendance`
---
-ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `class_sections`
---
-ALTER TABLE `class_sections`
-  MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `enrollments`
---
-ALTER TABLE `enrollments`
-  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `scholarship_applications`
---
-ALTER TABLE `scholarship_applications`
-  MODIFY `application_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `scholarship_monitoring`
---
-ALTER TABLE `scholarship_monitoring`
-  MODIFY `monitoring_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `scholarship_programs`
---
-ALTER TABLE `scholarship_programs`
-  MODIFY `program_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `scholarship_providers`
---
-ALTER TABLE `scholarship_providers`
-  MODIFY `provider_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `students`
---
-ALTER TABLE `students`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `student_classes`
---
-ALTER TABLE `student_classes`
-  MODIFY `student_class_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `student_quarterly_grades`
---
-ALTER TABLE `student_quarterly_grades`
-  MODIFY `quarter_grade_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `subjects`
---
-ALTER TABLE `subjects`
-  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `teachers`
---
-ALTER TABLE `teachers`
-  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `academic_history`
---
-ALTER TABLE `academic_history`
-  ADD CONSTRAINT `academic_history_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `academic_history_details`
---
-ALTER TABLE `academic_history_details`
-  ADD CONSTRAINT `academic_history_details_ibfk_1` FOREIGN KEY (`history_id`) REFERENCES `academic_history` (`history_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `academic_history_details_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `announcements`
---
-ALTER TABLE `announcements`
-  ADD CONSTRAINT `announcements_ibfk_1` FOREIGN KEY (`posted_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `attendance`
---
-ALTER TABLE `attendance`
-  ADD CONSTRAINT `attendance_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `attendance_ibfk_2` FOREIGN KEY (`section_id`) REFERENCES `class_sections` (`section_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `class_sections`
---
-ALTER TABLE `class_sections`
-  ADD CONSTRAINT `class_sections_ibfk_1` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `class_sections_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`teacher_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `enrollments`
---
-ALTER TABLE `enrollments`
-  ADD CONSTRAINT `enrollments_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `enrollments_ibfk_2` FOREIGN KEY (`enrolled_by`) REFERENCES `users` (`user_id`);
-
---
--- Constraints for table `scholarship_applications`
---
-ALTER TABLE `scholarship_applications`
-  ADD CONSTRAINT `scholarship_applications_ibfk_1` FOREIGN KEY (`program_id`) REFERENCES `scholarship_programs` (`program_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `scholarship_applications_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `scholarship_monitoring`
---
-ALTER TABLE `scholarship_monitoring`
-  ADD CONSTRAINT `scholarship_monitoring_ibfk_1` FOREIGN KEY (`application_id`) REFERENCES `scholarship_applications` (`application_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `scholarship_programs`
---
-ALTER TABLE `scholarship_programs`
-  ADD CONSTRAINT `scholarship_programs_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `scholarship_providers` (`provider_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `students`
---
-ALTER TABLE `students`
-  ADD CONSTRAINT `students_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `student_classes`
---
-ALTER TABLE `student_classes`
-  ADD CONSTRAINT `student_classes_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `student_classes_ibfk_2` FOREIGN KEY (`section_id`) REFERENCES `class_sections` (`section_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `student_quarterly_grades`
---
-ALTER TABLE `student_quarterly_grades`
-  ADD CONSTRAINT `student_quarterly_grades_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `student_quarterly_grades_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`subject_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `teachers`
---
-ALTER TABLE `teachers`
-  ADD CONSTRAINT `teachers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
