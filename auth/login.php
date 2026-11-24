@@ -34,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-lg-7 d-flex">
                 <section class="card p-4 p-md-5 w-100 login-announcements">
                     <h2 class="login-section-title">School Announcements</h2>
-                    <p class="text-muted mb-4">Public school updates and enrollment notices</p>
                     <div class="announcement-list">
                         <?php if (!$news): ?>
                             <p class="text-muted">No public announcements have been posted yet.</p>
@@ -53,7 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <section class="card p-4 p-md-5 w-100 login-card text-center">
                     <img src="../assets/school_logo.png" class="school-logo mx-auto mb-3" alt="ELTNHS school logo">
                     <h1 class="login-school-name">Eastern La Trinidad National High School</h1>
-                    <p class="text-muted mb-4">Enrollment, Student Records and Community Scholarship Management</p>
                     <?php if ($error): ?>
                         <div class="alert alert-danger text-start"><?= e($error) ?></div>
                     <?php endif; ?>

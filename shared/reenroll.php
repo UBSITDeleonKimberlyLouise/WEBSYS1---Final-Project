@@ -72,7 +72,7 @@ if($staff){
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Re-enrollment</h1><p>Use existing student records for the current school year.</p></div></div>
+<div class="page-heading"><div><h1>Re-enrollment</h1></div></div>
 <?php if($msg):?><div class="alert alert-success"><?=e($msg)?></div><?php endif;?>
 <?php if($err):?><div class="alert alert-danger"><?=e($err)?></div><?php endif;?>
 <div class="card p-4 mb-3"><h5>School Year: <?=e($year['school_year_name']??'Not configured')?></h5><p class="text-muted">Returning students do not need to complete a new registration form or reupload accepted documents.</p>

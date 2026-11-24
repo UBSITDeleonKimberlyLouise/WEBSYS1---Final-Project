@@ -46,7 +46,7 @@ require 'includes/header.php';
 .monthly-report-filter .form-label{font-weight:600;color:#34455a;font-size:13px;margin-bottom:6px}
 @media(max-width:575px){.monthly-report-filter{padding:17px}.monthly-report-filter .report-controls .month-field,.monthly-report-filter .report-controls .btn{width:100%;max-width:none}}
 </style>
-<div class="page-heading"><div><h1>Attendance Reports</h1><p>Official daily attendance and previous advisory records</p></div></div>
+<div class="page-heading"><div><h1>Attendance Reports</h1></div></div>
 <?php if($error):?><div class="alert alert-warning"><?=e($error)?></div><?php endif;?>
 <div class="monthly-report-filter">
   <div class="report-context" style="margin-bottom:12px">

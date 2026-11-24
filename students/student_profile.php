@@ -106,7 +106,7 @@ require 'includes/header.php';
 .student-doc-card { border:1px solid #dbe4f0; border-radius:12px; padding:20px; height:100%; }
 @media(max-width:576px) { .student-profile-avatar {width:56px;height:56px;} }
 </style>
-<div class="page-heading"><div><h1>My Profile</h1><p>Your student information and enrollment documents.</p></div></div>
+<div class="page-heading"><div><h1>My Profile</h1></div></div>
 <?php if ($message): ?><div class="alert alert-success"><?=e($message)?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger"><?=e($error)?></div><?php endif; ?>
 

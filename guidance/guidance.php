@@ -102,7 +102,7 @@ foreach ($rows as $row) {
 
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Guidance Assessments</h1><p>Interview, comments, and approval only</p></div></div>
+<div class="page-heading"><div><h1>Guidance Assessments</h1></div></div>
 <?php if ($msg): ?><div class="alert alert-info"><?= e($msg) ?></div><?php endif; ?>
 <?php if (!$rows): ?>
 <div class="alert alert-info">No learners with enrollment records in the current school year are available for guidance interviews. Ask the Registrar to create or assign the learner's pending enrollment first. Guidance approval does not by itself finalize enrollment; the Registrar must also verify the requirements.</div>

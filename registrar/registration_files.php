@@ -54,7 +54,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>Registration Documents</h1>
-        <p>Review submitted files and verify each document.</p>
     </div>
 </div>
 

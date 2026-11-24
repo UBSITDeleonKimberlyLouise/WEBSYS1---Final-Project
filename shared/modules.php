@@ -171,7 +171,7 @@ $stepStudentHasLogin = !empty($stepStudent['user_id']);
 $programs=[];
 $applications=[];
 ?>
-<div class="page-heading"><div><h1><?= e(["students"=>"Student Registration","enrollments"=>"Enrollment Management","records"=>"Student Records","programs"=>"Scholarship Programs","applications"=>"Scholarship Applications","monitoring"=>"Scholarship Monitoring","announcements"=>"Announcements","reports"=>"Reports"][$module] ?? "Module") ?></h1><p><?= e($role) ?> workspace</p></div><?php if ($module === 'reports'): ?><button type="button" class="btn btn-outline-primary print-action" onclick="if (typeof printSelectedRegistrarReport === 'function' && printSelectedRegistrarReport()) return; window.print()" aria-label="Print this page" title="Print this page">🖨️ Print</button><?php endif; ?></div>
+<div class="page-heading"><div><h1><?= e(["students"=>"Student Registration","enrollments"=>"Enrollment Management","records"=>"Student Records","programs"=>"Scholarship Programs","applications"=>"Scholarship Applications","monitoring"=>"Scholarship Monitoring","announcements"=>"Announcements","reports"=>"Reports"][$module] ?? "Module") ?></h1></div><?php if ($module === 'reports'): ?><button id="print-selected-report" type="button" class="btn btn-outline-primary print-action" disabled onclick="printSelectedRegistrarReport()" aria-label="Print this page" title="Print this page">🖨️ Print</button><?php endif; ?></div>
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
 
 <?php if ($module==='students'): ?>
@@ -396,11 +396,14 @@ function showRegistrarForm(form, button) {
   });
   var container = document.getElementById('registrar-report-container');
   var frame = document.getElementById('registrar-report-frame');
+  document.getElementById('print-selected-report').disabled = true;
   container.style.display = 'block';
   frame.src = '../admin/principal_reports.php?form=' + encodeURIComponent(form);
 }
 function prepareRegistrarReportFrame() {
   var frame = document.getElementById('registrar-report-frame');
+  var printButton = document.getElementById('print-selected-report');
+  if (!frame || !frame.getAttribute('src') || !printButton) return;
   try {
     var doc = frame.contentDocument;
     if (!doc || !doc.body) return;
@@ -409,6 +412,7 @@ function prepareRegistrarReportFrame() {
     doc.head.appendChild(style);
     function resize() { frame.style.height = Math.max(750, doc.documentElement.scrollHeight + 30, doc.body.scrollHeight + 30) + 'px'; }
     resize();
+    printButton.disabled = false;
     if (typeof ResizeObserver !== 'undefined') {
       if (frame._registrarResizeObserver) frame._registrarResizeObserver.disconnect();
       frame._registrarResizeObserver = new ResizeObserver(resize);

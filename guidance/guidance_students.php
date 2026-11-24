@@ -30,7 +30,7 @@ if ($students) {
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Student Masterlist</h1><p>Search once to display student profiles and enrollment history below.</p></div></div>
+<div class="page-heading"><div><h1>Student Masterlist</h1></div></div>
 <div class="card p-3 mb-3"><form method="get" action="../guidance/guidance_students.php" class="row g-2"><div class="col-md-9"><input name="q" class="form-control" value="<?= e($search) ?>" placeholder="Enter student LRN or name" maxlength="100" required autofocus></div><div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Search</button></div></form></div>
 <?php if ($error): ?><div class="alert alert-warning"><?= e($error) ?></div><?php elseif ($search !== '' && !$students): ?><div class="alert alert-info">No matching students found.</div><?php endif; ?>
 <?php if ($students): ?><p class="text-muted small">Showing <?= count($students) ?> matching student(s). No additional View button required.</p><?php endif; ?>

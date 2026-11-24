@@ -12,7 +12,7 @@ if(!$person){http_response_code(404);exit('Account not found.');}
 function showField($label,$value){echo '<div class="col-md-6 mb-3"><div class="text-muted small">'.e($label).'</div><div class="border rounded p-2 bg-light">'.e($value===null||$value===''?'Not provided':$value).'</div></div>';}
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>My Profile</h1><p>Teacher account and personnel information</p></div></div>
+<div class="page-heading"><div><h1>My Profile</h1></div></div>
 <div class="card p-4"><h4 class="mb-1"><?=e(trim(($person['first_name']??'').' '.($person['middle_name']??'').' '.($person['last_name']??'')) ?: 'Teacher Profile')?></h4><p class="text-muted mb-4"><?=e($person['role'])?></p>
 <?php if(empty($person['teacher_id'])): ?><div class="alert alert-warning">Your teacher record is not linked to this account yet. Please contact the Administrator.</div><?php endif; ?>
 <div class="row"><?php

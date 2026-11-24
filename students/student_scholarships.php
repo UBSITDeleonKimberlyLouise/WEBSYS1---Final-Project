@@ -81,7 +81,7 @@ $today = date('Y-m-d');
 $badge = function ($s) { return ['Approved' => 'success', 'Accepted' => 'success', 'Verified' => 'info', 'Rejected' => 'danger', 'Withdrawn' => 'dark', 'Submitted to Provider' => 'primary'][$s] ?? 'warning'; };
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Scholarships</h1><p class="text-muted mb-0">View available scholarships, apply online, and track your application.</p></div></div>
+<div class="page-heading"><div><h1>Scholarships</h1></div></div>
 <?php if ($msg): ?><div class="alert alert-success"><?= e($msg) ?></div><?php endif; ?>
 <?php if ($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif; ?>
 

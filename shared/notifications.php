@@ -59,7 +59,7 @@ if ($role === 'Student') {
 require 'includes/header.php';
 ?>
 <div class="page-heading">
-    <div><h1>Notifications</h1><p>Announcements, document submissions, scholarship updates, and account requests.</p></div>
+    <div><h1>Notifications</h1></div>
 </div>
 <?php if ($role === 'School Registrar'):
     $pending = (int)$pdo->query("SELECT COUNT(*) FROM password_reset_requests WHERE request_status='Pending'")->fetchColumn();

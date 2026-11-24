@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $rows = $files->show_data($lrn);
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>My Enrollment Documents</h1><p class="text-muted mb-0">View your submitted files and verification status.</p></div></div>
+<div class="page-heading"><div><h1>My Enrollment Documents</h1></div></div>
 <?php if ($msg): ?><div class="alert alert-success"><?= e($msg) ?></div><?php endif; ?>
 <?php if ($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif; ?>
 

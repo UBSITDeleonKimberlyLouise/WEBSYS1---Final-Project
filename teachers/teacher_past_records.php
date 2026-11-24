@@ -41,7 +41,7 @@ if($selected){
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Past Class Records</h1><p>Previous subjects, student grades, and subject attendance · Read-only</p></div></div>
+<div class="page-heading"><div><h1>Past Class Records</h1></div></div>
 <div class="card p-3 mb-3"><h5 class="mb-3">Previous Classes</h5>
 <?php if(!$classes):?><p class="text-muted mb-0">No completed school-year teaching assignments found.</p><?php else:?>
 <div class="row g-2">

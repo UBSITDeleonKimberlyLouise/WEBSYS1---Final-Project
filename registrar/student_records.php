@@ -35,7 +35,7 @@ foreach ($enrollments as $en) {
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Student Records</h1><p>Enrollment records by grade and section</p></div></div>
+<div class="page-heading"><div><h1>Student Records</h1></div></div>
 <div class="card p-3">
     <h5>Enrollment Records</h5>
     <?php if (!$enrollmentGroups): ?>

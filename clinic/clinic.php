@@ -45,7 +45,7 @@ $prep->execute();
 $students = $prep->fetchAll(PDO::FETCH_ASSOC);
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Clinic Records</h1><p>Student visits and emergency contacts</p></div></div>
+<div class="page-heading"><div><h1>Clinic Records</h1></div></div>
 <?php if ($msg): ?><div class="alert alert-info"><?= e($msg) ?></div><?php endif; ?>
 <div class="card p-3 mb-3"><h5>Add Clinic Visit</h5>
 <form method="post" class="row g-2">

@@ -14,7 +14,7 @@ $q->execute([$lrn]); $rows=$q->fetchAll(PDO::FETCH_ASSOC);
 require 'includes/header.php';
 require 'includes/print_layout.php';
 ?>
-<div class="page-heading"><div><h1>My Schedule</h1><p>My subjects and class schedule for the current school year.</p></div></div>
+<div class="page-heading"><div><h1>My Schedule</h1></div></div>
 <div class="card p-3">
 <?php if (!$rows): ?><p class="text-muted mb-0">No current class schedule is available yet.</p>
 <?php else: ?><h5><?=e($rows[0]['school_year_name'].' · '.$rows[0]['grade_level'].' · '.$rows[0]['section_name'])?></h5>

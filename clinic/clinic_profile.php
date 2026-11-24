@@ -16,7 +16,7 @@ $display = static function ($value): string {
 };
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>My Profile</h1><p>Your employee information.</p></div></div>
+<div class="page-heading"><div><h1>My Profile</h1></div></div>
 <div class="card p-4">
   <div class="d-flex align-items-center gap-3 mb-3">
     <div class="brand-mark" style="width:58px;height:58px;font-size:25px;border-radius:50%">C</div>

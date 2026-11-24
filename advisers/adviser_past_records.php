@@ -137,7 +137,7 @@ function pastSubjectResult(array $terms): string {
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Past Records</h1><p>Previous advisory classes and teaching subjects · Read-only</p></div></div>
+<div class="page-heading"><div><h1>Past Records</h1></div></div>
 <?php if ($error): ?><div class="alert alert-warning"><?= e($error) ?></div><?php endif; ?>
 <div class="card p-3 mb-3">
   <div class="d-flex gap-2 flex-wrap">

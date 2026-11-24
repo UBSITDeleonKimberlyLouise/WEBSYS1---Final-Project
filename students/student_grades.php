@@ -13,7 +13,7 @@ foreach($rows as $r){$id=(int)$r['section_subject_id'];if(!isset($subjects[$id])
 require 'includes/header.php';
 require 'includes/print_layout.php';
 ?>
-<div class="page-heading"><div><h1>My Grades</h1><p>Grades for the current school year. Blank means no grade has been encoded.</p></div></div>
+<div class="page-heading"><div><h1>My Grades</h1></div></div>
 <div class="card p-3"><?php if (!$rows): ?><p class="text-muted mb-0">No current subjects or grades available.</p><?php else: ?>
 <h5><?=e($rows[0]['school_year_name'].' · '.$rows[0]['grade_level'].' · '.$rows[0]['section_name'])?></h5>
 <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Subject</th><th>Term 1</th><th>Term 2</th><th>Term 3</th></tr></thead><tbody>

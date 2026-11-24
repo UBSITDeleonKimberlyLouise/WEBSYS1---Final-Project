@@ -136,7 +136,7 @@ if ($selected) {
 }
 if (isset($_GET['embedded']) && $_GET['embedded'] === '1') { echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="../assets/style.css"></head><body class="p-0" style="background:transparent">'; } else { require 'includes/header.php'; }
 ?>
-<?php if (!isset($_GET['embedded']) || $_GET['embedded'] !== '1'): ?><div class="mb-3"><h5 class="mb-1">Requirements Review &amp; Student Accounts</h5><p class="text-muted small mb-0">Review student documents, verify requirements, and manage student accounts.</p></div><?php endif; ?>
+<?php if (!isset($_GET['embedded']) || $_GET['embedded'] !== '1'): ?><div class="mb-3"><h5 class="mb-1">Requirements Review &amp; Student Accounts</h5></div><?php endif; ?>
 <?php if($msg):?><div class="alert alert-success"><?=e($msg)?></div><?php endif;?>
 <?php if($err):?><div class="alert alert-danger"><?=e($err)?></div><?php endif;?>
 

@@ -52,7 +52,7 @@ if ($selectedYear === '' || !array_key_exists($selectedYear, $data)) {
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>My Attendance</h1><p>Attendance records organized by school year and subject.</p></div><button type="button" class="btn btn-outline-primary print-action" onclick="window.print()">🖨️ Print</button></div>
+<div class="page-heading"><div><h1>My Attendance</h1></div><button type="button" class="btn btn-outline-primary print-action" onclick="window.print()">🖨️ Print</button></div>
 <?php if (!$data): ?>
 <div class="card p-4">No attendance records have been posted yet.</div>
 <?php else: ?>

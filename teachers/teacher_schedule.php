@@ -59,7 +59,6 @@ require 'includes/print_layout.php';
 <div class="page-heading">
   <div>
     <h1>My Schedule</h1>
-    <p class="no-print"><?= $role === 'Teacher Adviser' ? 'Advisory class and assigned teaching schedules in one page' : 'Your assigned teaching schedule' ?></p>
   </div>
   <button type="button" class="btn btn-outline-primary" onclick="window.print()">Print</button>
 </div>

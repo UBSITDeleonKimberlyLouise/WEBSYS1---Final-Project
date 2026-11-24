@@ -25,7 +25,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 if(preg_match('/^[0-9]{12}$/',$lrn)){$q=$pdo->prepare('SELECT * FROM students WHERE student_lrn=?');$q->execute([$lrn]);$student=$q->fetch(PDO::FETCH_ASSOC);}
 require 'includes/header.php';?>
-<div class="page-heading"><div><h1>Student Management</h1><p>Admin and Registrar can update student and parent/guardian details.</p></div></div>
+<div class="page-heading"><div><h1>Student Management</h1></div></div>
 <?php if($msg):?><div class="alert alert-success"><?=e($msg)?></div><?php endif;?>
 <?php if($err):?><div class="alert alert-danger"><?=e($err)?></div><?php endif;?>
 <div class="card p-3 mb-3"><form method="post" class="d-flex gap-2"><input type="hidden" name="csrf_token" value="<?=e(csrfToken())?>"><input class="form-control" name="search_lrn" value="<?=e($lrn)?>" placeholder="Enter 12-digit student LRN" pattern="[0-9]{12}" required><button class="btn btn-primary">Search</button></form></div>

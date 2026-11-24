@@ -9,7 +9,6 @@ requireLogin();
 $system = new ELTNHS($pdo);
 $role = $_SESSION['role'];
 $name = $_SESSION['username'];
-$subtitle = 'Here is a quick view of your school portal.';
 $stats = [];
 $actions = [];
 $recentTitle = 'Quick guide';
@@ -21,7 +20,6 @@ if ($role === 'Student') {
  $actions = [['My Profile','portal.php?page=profile','View your personal information'],['My Schedule','portal.php?page=schedule','Check your subjects and class times'],['Grades','portal.php?page=grades','View grades by school year and term']];
  $recentTitle='Latest Announcements';
  $recentRows=$system->getAll("SELECT title,announcement_category,publish_date FROM announcements WHERE announcement_status='Published' AND publish_date<=NOW() AND (expiry_date IS NULL OR expiry_date>=NOW()) AND target_audience IN ('All','Students') ORDER BY publish_date DESC LIMIT 5");
- $subtitle='Welcome to your Student Portal. You can check your school information here.';
  $history=[];
  if($student){
   $history=$system->getAll('SELECT sy.school_year_name,sy.year_status,e.grade_level,cs.section_name,e.enrollment_status,e.final_result FROM enrollments e JOIN school_years sy ON sy.school_year_id=e.school_year_id LEFT JOIN class_sections cs ON cs.section_id=e.section_id WHERE e.student_lrn=? ORDER BY sy.school_year_id DESC,e.enrollment_id DESC',[$student['student_lrn']]);
@@ -32,18 +30,16 @@ if ($role === 'Student') {
  $actions=[['Process Enrollment','modules.php?module=enrollments','Create the enrollment record and submission code'],['Review Requirements','registrar_requirements.php','Check submitted files and verify each requirement'],['View Reports','modules.php?module=reports','Review enrollment summaries']];
  $recentTitle='Recent Enrollment Records';
  $recentRows=$system->getAll('SELECT s.student_lrn,CONCAT(s.last_name,", ",s.first_name) student_name,e.grade_level,e.enrollment_status,sy.school_year_name FROM enrollments e JOIN students s ON e.student_lrn=s.student_lrn JOIN school_years sy ON e.school_year_id=sy.school_year_id ORDER BY e.enrollment_id DESC LIMIT 6');
- $subtitle='Manage student profiles and enrollment in three clear steps.';
 } elseif ($role === 'System Administrator') {
  $stats=[['Total Students Enrolled',$system->getOne("SELECT COUNT(DISTINCT student_lrn) total FROM enrollments WHERE enrollment_status='Officially Enrolled'")['total'],'Students officially enrolled across school years'],['Total Accounts',$system->getOne('SELECT COUNT(*) total FROM users')['total'],'All system users'],['Inactive Accounts',$system->getOne("SELECT COUNT(*) total FROM users WHERE account_status<>'Active'")['total'],'Accounts not active']];
  $actions=[['Manage Accounts','manage_accounts.php','Manage staff and student accounts'],['Student Masterlist','student_masterlist.php','Search student profiles and enrollment records'],['Announcements','modules.php?module=announcements','Create and review announcements'],['All Reports','modules.php?module=reports','SF1, SF2, and SF5 principal reports']];
  $recentTitle='System and Account Information';
  $recentRows=$system->getAll('SELECT role,COUNT(*) total FROM users GROUP BY role ORDER BY role');
- $subtitle='Manage staff access and review system account information.';
 } elseif ($role === 'Teacher Adviser') {
  $teacher=$system->getOne('SELECT teacher_id,first_name,last_name FROM teachers WHERE user_id=?',[$_SESSION['user_id']]);$teacherId=$teacher['teacher_id']??0;
  $stats=[['Advisory Sections',$system->getOne('SELECT COUNT(*) total FROM class_sections WHERE adviser_teacher_id=?',[$teacherId])['total'],'Sections assigned to you'],['Advisory Students',$system->getOne("SELECT COUNT(DISTINCT e.student_lrn) total FROM enrollments e JOIN class_sections cs ON cs.section_id=e.section_id WHERE cs.adviser_teacher_id=? AND e.enrollment_status='Officially Enrolled'",[$teacherId])['total'],'Officially enrolled learners']];
  $actions=[['My Profile','teacher_profile.php','View your staff information'],['My Advisory Class','advisory_class.php','View students, grades, and result statuses'],['My Advisory Setup','adviser_subjects.php','Manage subjects, subject teachers, and schedules'],['Notifications','notifications.php','View school announcements and updates']];
- $recentTitle='';$recentRows=[];$subtitle='Manage your advisory section and review your students’ academic progress.';
+ $recentTitle='';$recentRows=[];
 } elseif ($role === 'Subject Teacher') {
  $teacher=$system->getOne('SELECT teacher_id,first_name,last_name FROM teachers WHERE user_id=?',[$_SESSION['user_id']]);
  $teacherId=$teacher['teacher_id']??0;
@@ -51,27 +47,23 @@ if ($role === 'Student') {
  $actions=[['My Profile','teacher_profile.php','View your staff information'],['My Classes & Grade Encoding','classroom.php','Choose your assigned grade, section, subject, and grading period'],['My Schedule','portal.php?page=schedule','View your subject schedule'],['Announcements','modules.php?module=announcements','Read school announcements'],['Notifications','notifications.php','View updates and requests']];
  $recentTitle='My Assigned Subjects';
  $recentRows=$system->getAll('SELECT cs.section_name,s.subject_name,ss.schedule_days,ss.start_time,ss.end_time FROM section_subjects ss JOIN class_sections cs ON ss.section_id=cs.section_id JOIN subjects s ON ss.subject_id=s.subject_id WHERE (ss.teacher_id=? OR cs.adviser_teacher_id=?) ORDER BY cs.section_name,s.subject_name LIMIT 8',[$teacherId,$teacherId]);
- $subtitle='View your classes, schedule, grades, and attendance tasks.';
 } elseif ($role === 'Guidance Counselor') {
  $stats = [['Current Assessments', $system->getOne('SELECT COUNT(*) total FROM guidance_records')['total'], 'Recorded evaluations']];
  $actions = [['Guidance Assessments','guidance.php','Review students and record assessments']];
  $recentRows = [];
- $subtitle = 'Review reading and interview results.';
 } elseif ($role === 'Clinic Personnel') {
  $stats = [['Clinic Visits', $system->getOne('SELECT COUNT(*) total FROM clinic_visits')['total'], 'Recorded visits']];
  $actions = [['Student Masterlist','clinic_students.php','Search students and emergency contacts'],['Clinic Visits','clinic.php','Record student clinic visits']];
  $recentRows = [];
- $subtitle = 'Record clinic visits and review emergency contacts.';
 } elseif ($role === 'Scholarship Coordinator') {
  $stats=[['Published Programs',$system->getOne("SELECT COUNT(*) total FROM scholarship_programs WHERE program_status='Published'")['total'],'Available scholarship listings'],['Applications',$system->getOne('SELECT COUNT(*) total FROM scholarship_applications')['total'],'Recorded applications'],['Beneficiaries',$system->getOne('SELECT COUNT(*) total FROM scholarship_awards')['total'],'Recorded scholarship awards']];
  $actions=[['Scholarship Programs','modules.php?module=programs','Add providers and publish opportunities'],['Applications','modules.php?module=applications','Review student applications'],['Scholarship Monitoring','modules.php?module=monitoring','Track beneficiaries and assistance'],['Reports','modules.php?module=reports','View scholarship summaries']];
  $recentTitle='Recent Applications';
  $recentRows=$system->getAll('SELECT a.student_lrn,p.program_name,a.application_status,a.application_date FROM scholarship_applications a JOIN scholarship_programs p ON a.program_id=p.program_id ORDER BY a.application_id DESC LIMIT 6');
- $subtitle='Manage scholarship listings, applications, and beneficiaries.';
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Dashboard</h1><?php if($subtitle !== ''): ?><p><?= e($subtitle) ?></p><?php endif; ?></div></div>
+<div class="page-heading"><div><h1>Dashboard</h1></div></div>
 <div class="row g-3 mb-4">
  <?php foreach($stats as $stat): ?><div class="col-md-4"><div class="card stat-card"><div class="stat-label"><?= e($stat[0]) ?></div><div class="stat-value"><?= e($stat[1]) ?></div><div class="stat-note"><?= e($stat[2]) ?></div></div></div><?php endforeach; ?>
 </div>

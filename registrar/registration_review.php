@@ -23,7 +23,7 @@ if($_SERVER['REQUEST_METHOD']==='POST') { verifyCsrf(); try {
 }
 $search=trim($_GET['lrn']??''); $sql='SELECT * FROM student_registration_applications'; $params=[]; if($search!==''){$sql.=' WHERE student_lrn LIKE ?';$params[]='%'.$search.'%';} $sql.=" ORDER BY FIELD(application_status,'For Verification','Approved','Rejected'),submitted_at DESC"; $q=$pdo->prepare($sql);$q->execute($params);$rows=$q->fetchAll();
 require 'includes/header.php'; ?>
-<div class="page-heading"><div><h1>Review Parent Registrations</h1><p>Search by LRN to find a submitted registration and check the physical documents at school.</p></div></div>
+<div class="page-heading"><div><h1>Review Parent Registrations</h1></div></div>
 <?php if($msg):?><div class="alert alert-success"><?=e($msg)?></div><?php endif;?><?php if($err):?><div class="alert alert-danger"><?=e($err)?></div><?php endif;?>
 <div class="card p-3 mb-3"><form method="get" class="row g-2"><div class="col-md-8"><label class="form-label">Search by LRN</label><input class="form-control" name="lrn" value="<?=e($search)?>" placeholder="Enter full or partial 12-digit LRN"></div><div class="col-auto d-flex align-items-end"><button class="btn btn-primary">Search</button> <a class="btn btn-outline-secondary ms-2" href="../registrar/registration_review.php">Clear</a></div></form></div>
 <?php if(!$rows):?><div class="alert alert-info">No registration applications found.</div><?php endif;?>

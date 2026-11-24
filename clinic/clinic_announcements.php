@@ -72,7 +72,7 @@ $mine = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $visible = visibleAnnouncements($pdo, 'Clinic Personnel');
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Announcements</h1><p>Post school announcements and manage your own posts.</p></div></div>
+<div class="page-heading"><div><h1>Announcements</h1></div></div>
 <?php if ($message): ?><div class="alert alert-success"><?= e($message) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-warning"><?= e($error) ?></div><?php endif; ?>
 <div class="card p-3 mb-3">

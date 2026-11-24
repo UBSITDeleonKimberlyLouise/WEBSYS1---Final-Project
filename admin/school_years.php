@@ -65,7 +65,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>School Year Management</h1>
-        <p>Manage Current and Completed school years. Completed records remain available in the archive.</p>
     </div>
 </div>
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
