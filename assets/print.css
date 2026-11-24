@@ -1,0 +1,47 @@
+@page {
+  size: A4;
+  margin: 0;
+}
+
+.print-letterhead {
+  display: none;
+}
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-layout {
+    position: relative;
+    z-index: 0;
+  }
+
+  .print-letterhead {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 210mm;
+    height: 297mm;
+    object-fit: fill;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .print-content {
+    position: relative;
+    min-height: 297mm;
+    padding: 55mm 10mm 45mm;
+  }
+
+  .print-content .card {
+    background: transparent !important;
+  }
+
+  .print-content .page-heading::before {
+    display: none !important;
+    content: none !important;
+  }
+}

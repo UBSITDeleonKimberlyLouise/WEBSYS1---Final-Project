@@ -53,6 +53,9 @@ function menuActive($url, $current, $currentModule, $currentPage) {
  <title>ELTNHS Student Information System</title>
  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
  <link rel="stylesheet" href="<?= e(eltnhsUrl('assets/style.css')) ?>">
+ <?php if (in_array($current, ['student_grades.php', 'student_schedule.php', 'teacher_schedule.php'], true)): ?>
+ <link rel="stylesheet" href="<?= e(eltnhsUrl('assets/print.css')) ?>">
+ <?php endif; ?>
 </head>
 <body>
 <header class="topbar">

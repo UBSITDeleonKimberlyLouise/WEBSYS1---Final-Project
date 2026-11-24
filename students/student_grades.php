@@ -11,6 +11,7 @@ $q=$pdo->prepare("SELECT sy.school_year_name,e.grade_level,cs.section_name,s.sub
 $q->execute([$lrn]);$rows=$q->fetchAll(PDO::FETCH_ASSOC);$subjects=[];
 foreach($rows as $r){$id=(int)$r['section_subject_id'];if(!isset($subjects[$id]))$subjects[$id]=['name'=>$r['subject_name'],'grades'=>[]];if($r['grading_period']!==null)$subjects[$id]['grades'][$r['grading_period']]=$r['grade_value'];}
 require 'includes/header.php';
+require 'includes/print_layout.php';
 ?>
 <div class="page-heading"><div><h1>My Grades</h1><p>Grades for the current school year. Blank means no grade has been encoded.</p></div></div>
 <div class="card p-3"><?php if (!$rows): ?><p class="text-muted mb-0">No current subjects or grades available.</p><?php else: ?>
@@ -18,4 +19,6 @@ require 'includes/header.php';
 <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Subject</th><th>Term 1</th><th>Term 2</th><th>Term 3</th></tr></thead><tbody>
 <?php foreach($subjects as $s): ?><tr><td><?=e($s['name'])?></td><?php foreach(['Prelim','Midterm','Finals'] as $p): ?><td><?=isset($s['grades'][$p]) && $s['grades'][$p]!==null?e((string)$s['grades'][$p]):'—'?></td><?php endforeach; ?></tr><?php endforeach; ?>
 </tbody></table></div><?php endif; ?></div>
+ </div>
+</div>
 <?php require 'includes/footer.php'; ?>

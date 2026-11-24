@@ -54,11 +54,12 @@ function scheduleTable($rows) {
 }
 
 require 'includes/header.php';
+require 'includes/print_layout.php';
 ?>
 <div class="page-heading">
   <div>
     <h1>My Schedule</h1>
-    <p><?= $role === 'Teacher Adviser' ? 'Advisory class and assigned teaching schedules in one page' : 'Your assigned teaching schedule' ?></p>
+    <p class="no-print"><?= $role === 'Teacher Adviser' ? 'Advisory class and assigned teaching schedules in one page' : 'Your assigned teaching schedule' ?></p>
   </div>
   <button type="button" class="btn btn-outline-primary" onclick="window.print()">Print</button>
 </div>
@@ -74,5 +75,7 @@ require 'includes/header.php';
 <div class="card p-3">
   <h5 class="mb-3">My Teaching Schedule</h5>
   <?php scheduleTable($teaching); ?>
+</div>
+ </div>
 </div>
 <?php require 'includes/footer.php'; ?>
