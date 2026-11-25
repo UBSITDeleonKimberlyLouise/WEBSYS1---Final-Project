@@ -226,6 +226,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_student_lrn']
             $_SESSION['message'] = $old ? 'Section updated.' : 'Section created.';
         } elseif (
             $module === 'enrollments' &&
+            in_array($role, ['School Registrar', 'System Administrator'], true) &&
+            ($_POST['enrollment_action'] ?? '') === 'transfer_section'
+        ) {
+            $pdo->beginTransaction();
+            $rawIds = $_POST['enrollment_ids'] ?? [];
+            if (!is_array($rawIds) && !empty($_POST['enrollment_id'])) {
+                $rawIds = [$_POST['enrollment_id']];
+            }
+            $enrollmentIds = array_values(array_unique(array_filter(
+                array_map('intval', is_array($rawIds) ? $rawIds : []),
+                static function ($val) {
+                    return $val > 0;
+                }
+            )));
+            $newSectionId = (int)($_POST['new_section_id'] ?? 0);
+
+            if (!$enrollmentIds) {
+                throw new Exception('Select at least one student to transfer.');
+            }
+
+            if ($newSectionId <= 0) {
+                throw new Exception('Select an available section to transfer to.');
+            }
+
+            $placeholders = implode(',', array_fill(0, count($enrollmentIds), '?'));
+            $enRows = $system->getAll(
+                "SELECT e.*, sy.year_status
+                 FROM enrollments e
+                 JOIN school_years sy ON sy.school_year_id = e.school_year_id
+                 WHERE e.enrollment_id IN ($placeholders)
+                 FOR UPDATE",
+                $enrollmentIds
+            );
+
+            if (count($enRows) !== count($enrollmentIds)) {
+                throw new Exception('One or more selected enrollment records were not found.');
+            }
+
+            $firstRow = $enRows[0];
+            foreach ($enRows as $row) {
+                if ((int)$row['school_year_id'] !== (int)$firstRow['school_year_id'] || $row['grade_level'] !== $firstRow['grade_level']) {
+                    throw new Exception('Selected students must belong to the same school year and grade level.');
+                }
+                if (($row['shs_track'] ?? '') !== ($firstRow['shs_track'] ?? '')) {
+                    throw new Exception('Selected students must belong to the same SHS track.');
+                }
+                if ((int)($row['section_id'] ?? 0) === $newSectionId) {
+                    throw new Exception('One or more selected students are already assigned to the chosen section.');
+                }
+            }
+
+            $targetSec = $system->getOne(
+                'SELECT *
+                 FROM class_sections
+                 WHERE section_id = ?
+                   AND school_year_id = ?
+                   AND grade_level = ?
+                 FOR UPDATE',
+                [$newSectionId, (int)$firstRow['school_year_id'], $firstRow['grade_level']]
+            );
+
+            if (!$targetSec || $targetSec['section_status'] === 'Closed') {
+                throw new Exception('Target section is closed, full, or does not match the students\' grade level.');
+            }
+
+            if (!empty($firstRow['shs_track']) && $targetSec['shs_track'] !== $firstRow['shs_track']) {
+                throw new Exception('Target section does not match the students\' SHS track.');
+            }
+
+            $occupied = (int)$system->getOne(
+                "SELECT COUNT(*) AS total
+                 FROM enrollments
+                 WHERE section_id = ?
+                   AND enrollment_id NOT IN ($placeholders)
+                   AND enrollment_status IN ('Officially Enrolled', 'Pending', 'Temporarily Enrolled')",
+                array_merge([$newSectionId], $enrollmentIds)
+            )['total'];
+
+            if (($occupied + count($enrollmentIds)) > (int)$targetSec['capacity']) {
+                throw new Exception('Target section does not have enough available slots for all selected students.');
+            }
+
+            $system->save(
+                "UPDATE enrollments SET section_id = ? WHERE enrollment_id IN ($placeholders)",
+                array_merge([$newSectionId], $enrollmentIds)
+            );
+
+            $pdo->commit();
+            $_SESSION['message'] = count($enrollmentIds) . ' student(s) transferred to ' . $targetSec['section_name'] . '.';
+        } elseif (
+            $module === 'enrollments' &&
             in_array($role, ['School Registrar', 'System Administrator'], true)
         ) {
             $pdo->beginTransaction();
@@ -502,6 +593,49 @@ $sections = $module === 'enrollments'
     ? $system->getAll('SELECT cs.*, sy.school_year_name, (SELECT COUNT(*) FROM enrollments en WHERE en.section_id=cs.section_id AND en.enrollment_status IN (\'Officially Enrolled\',\'Pending\',\'Temporarily Enrolled\')) AS occupied FROM class_sections cs JOIN school_years sy ON sy.school_year_id = cs.school_year_id ORDER BY cs.grade_level, cs.section_name')
     : [];
 
+$lrnHistoryMap = [];
+if ($module === 'enrollments') {
+    $pastEnrollments = $system->getAll(
+        'SELECT e.student_lrn, e.grade_level, e.enrollment_category, e.shs_track
+         FROM enrollments e
+         JOIN school_years sy ON sy.school_year_id = e.school_year_id
+         ORDER BY sy.school_year_id ASC, e.enrollment_id ASC'
+    );
+    foreach ($pastEnrollments as $pe) {
+        $lrnHistoryMap[$pe['student_lrn']] = [
+            'last_grade' => $pe['grade_level'],
+            'last_category' => $pe['enrollment_category'],
+            'last_track' => $pe['shs_track'] ?? ''
+        ];
+    }
+
+    $appRows = $system->getAll(
+        'SELECT student_lrn, enrollment_category, application_data
+         FROM student_registration_applications
+         ORDER BY application_id ASC'
+    );
+    foreach ($appRows as $ar) {
+        $decoded = json_decode($ar['application_data'] ?? '', true) ?: [];
+        $appGrade = $decoded['grade_level'] ?? ($decoded['last_grade_completed'] ?? '');
+        $appTrack = $decoded['shs_track'] ?? '';
+        if (!isset($lrnHistoryMap[$ar['student_lrn']])) {
+            $lrnHistoryMap[$ar['student_lrn']] = [
+                'last_grade' => $appGrade,
+                'last_category' => $ar['enrollment_category'] ?? 'Incoming',
+                'last_track' => $appTrack,
+                'from_application' => true
+            ];
+        } else {
+            if (!empty($ar['enrollment_category'])) {
+                $lrnHistoryMap[$ar['student_lrn']]['last_category'] = $ar['enrollment_category'];
+            }
+            if (!empty($appTrack)) {
+                $lrnHistoryMap[$ar['student_lrn']]['last_track'] = $appTrack;
+            }
+        }
+    }
+}
+
 $teachers = $system->getAll("
     SELECT t.teacher_id, t.first_name, t.last_name
     FROM teachers t
@@ -601,6 +735,14 @@ $applications = [];
     .workflow-step.completed .workflow-number {
         background-color: #198754 !important;
         color: #ffffff !important;
+    }
+
+    .section-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
 </style>
 
@@ -935,7 +1077,7 @@ $applications = [];
         </div>
     </details>
 
-    <details class="card p-3 mb-4">
+    <details class="card p-3 mb-4" open>
         <summary class="fw-bold">Create Enrollment Record</summary>
 
         <div class="mt-3">
@@ -949,6 +1091,7 @@ $applications = [];
                             class="form-control"
                             type="text"
                             name="student_lrn"
+                            id="createEnrollStudentLrn"
                             maxlength="12"
                             minlength="12"
                             pattern="[0-9]{12}"
@@ -957,7 +1100,7 @@ $applications = [];
                             placeholder="Enter registered LRN"
                             required
                         >
-                        <small class="text-muted">
+                        <small class="text-muted" id="createEnrollLrnHint">
                             Enter the 12-digit LRN from the saved Student Profile.
                         </small>
                     </div>
@@ -982,7 +1125,7 @@ $applications = [];
 
                     <div class="col-md-3">
                         <label class="form-label">Category</label>
-                        <select class="form-select" name="enrollment_category">
+                        <select class="form-select" name="enrollment_category" id="createEnrollCategory">
                             <option>Incoming</option>
                             <option>Returning</option>
                             <option>Transferee</option>
@@ -1037,7 +1180,7 @@ $applications = [];
                     </div>
                 </div>
 
-                <button class="btn btn-primary" <?= $currentSchoolYear ? '' : 'disabled' ?>>
+                <button class="btn btn-primary mt-3" <?= $currentSchoolYear ? '' : 'disabled' ?>>
                     Save Enrollment
                 </button>
             </form>
@@ -1045,10 +1188,16 @@ $applications = [];
     </details>
     <script>
     (function() {
+        var lrnEl = document.getElementById('createEnrollStudentLrn');
+        var hintEl = document.getElementById('createEnrollLrnHint');
         var gradeEl = document.getElementById('createEnrollGradeLevel');
+        var catEl = document.getElementById('createEnrollCategory');
         var trackEl = document.getElementById('createEnrollShsTrack');
         var secEl = document.getElementById('createEnrollSectionSelect');
         if (!gradeEl || !secEl) return;
+
+        var lrnHistory = <?= json_encode($lrnHistoryMap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        var gradeOrder = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
         var allSectionOptions = Array.prototype.slice.call(secEl.options).map(function(opt) {
             return {
@@ -1097,11 +1246,75 @@ $applications = [];
             secEl.value = stillValid ? currentVal : '';
         }
 
+        function applyLrnAutoDefaults() {
+            if (!lrnEl) {
+                filterCreateEnrollmentSections();
+                return;
+            }
+
+            var lrn = lrnEl.value.trim();
+            if (!/^[0-9]{12}$/.test(lrn)) {
+                if (hintEl) {
+                    hintEl.textContent = 'Enter the 12-digit LRN from the saved Student Profile.';
+                }
+                filterCreateEnrollmentSections();
+                return;
+            }
+
+            var rec = lrnHistory[lrn];
+            if (!rec) {
+                if (catEl) catEl.value = 'Incoming';
+                if (hintEl) {
+                    hintEl.textContent = 'New LRN: defaulted category to Incoming.';
+                }
+                filterCreateEnrollmentSections();
+                return;
+            }
+
+            var category = rec.last_category || 'Returning';
+            if (rec.from_application) {
+                category = rec.last_category || 'Incoming';
+            } else if (!['Transferee', 'Balik-Aral'].includes(category)) {
+                category = 'Returning';
+            }
+
+            var idx = gradeOrder.indexOf(rec.last_grade);
+            var targetGrade = rec.last_grade || 'Grade 7';
+            if (!rec.from_application && idx !== -1) {
+                if (category === 'Balik-Aral') {
+                    targetGrade = gradeOrder[idx];
+                } else if (idx < gradeOrder.length - 1) {
+                    targetGrade = gradeOrder[idx + 1];
+                } else {
+                    targetGrade = gradeOrder[idx];
+                }
+            }
+
+            if (gradeOrder.includes(targetGrade)) {
+                gradeEl.value = targetGrade;
+            }
+            if (catEl) {
+                catEl.value = category;
+            }
+            if (trackEl && (targetGrade === 'Grade 11' || targetGrade === 'Grade 12') && rec.last_track) {
+                trackEl.value = rec.last_track;
+            }
+            if (hintEl) {
+                hintEl.textContent = 'Matched LRN history: ' + category + ' • ' + targetGrade + '.';
+            }
+
+            filterCreateEnrollmentSections();
+        }
+
+        if (lrnEl) {
+            lrnEl.addEventListener('input', applyLrnAutoDefaults);
+            lrnEl.addEventListener('change', applyLrnAutoDefaults);
+        }
         gradeEl.addEventListener('change', filterCreateEnrollmentSections);
         if (trackEl) {
             trackEl.addEventListener('change', filterCreateEnrollmentSections);
         }
-        filterCreateEnrollmentSections();
+        applyLrnAutoDefaults();
     })();
     </script>
 
@@ -1125,6 +1338,16 @@ $applications = [];
     foreach ($enrollments as $en) {
         $enrollmentGroups[$en['grade_level']][$en['section_name'] ?? 'Unassigned'][] = $en;
     }
+
+    $availableSectionsByGrade = [];
+    foreach ($sections as $sec) {
+        if (!$currentSchoolYear || (int)$sec['school_year_id'] !== (int)$currentSchoolYear['school_year_id']) continue;
+        if ($sec['section_status'] === 'Closed' || (int)$sec['occupied'] >= (int)$sec['capacity']) continue;
+        $availableSectionsByGrade[$sec['grade_level']][] = $sec;
+    }
+
+    $canManageTransfers = in_array($role, ['School Registrar', 'System Administrator'], true);
+    $secBlockCounter = 0;
     ?>
 
     <?php if ($role === 'System Administrator'): ?>
@@ -1142,90 +1365,258 @@ $applications = [];
             <p class="text-muted mb-0">No enrollment records yet.</p>
         <?php else: ?>
             <?php foreach ($enrollmentGroups as $grade => $sectionGroups): ?>
-                <details class="border rounded p-3 mt-3">
+                <details class="border rounded p-3 mt-3" open>
                     <summary class="fw-bold">
                         <?= e($grade) ?>
                         (<?= array_sum(array_map('count', $sectionGroups)) ?> learners)
                     </summary>
 
                     <?php foreach ($sectionGroups as $sectionName => $learners): ?>
-                        <details class="card border p-3 mb-3 mt-2">
+                        <?php
+                        $secBlockCounter++;
+                        $secBlockId = 'secManageBlock_' . $secBlockCounter;
+                        $currentSecId = (int)($learners[0]['section_id'] ?? 0);
+                        $currentSecTrack = $learners[0]['shs_track'] ?? '';
+                        $gradeAvailableSections = $availableSectionsByGrade[$grade] ?? [];
+                        if ($currentSecTrack !== '') {
+                            $gradeAvailableSections = array_values(array_filter(
+                                $gradeAvailableSections,
+                                static function ($s) use ($currentSecTrack) {
+                                    return ($s['shs_track'] ?? '') === $currentSecTrack;
+                                }
+                            ));
+                        }
+                        $gradeAvailableSections = array_values(array_filter(
+                            $gradeAvailableSections,
+                            static function ($s) use ($currentSecId) {
+                                return (int)$s['section_id'] !== $currentSecId;
+                            }
+                        ));
+                        ?>
+                        <details class="card border p-3 mb-3 mt-2" open>
                             <summary class="fw-semibold">
-                                Section: <?= e($sectionName) ?>
-                                (<?= count($learners) ?> learners)
+                                <div class="section-summary-row w-100">
+                                    <span>
+                                        Section: <?= e($sectionName) ?>
+                                        (<?= count($learners) ?> learners)
+                                    </span>
+
+                                    <?php if ($canManageTransfers): ?>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            onclick="event.preventDefault(); event.stopPropagation(); toggleSectionTransferMode('<?= e($secBlockId) ?>');"
+                                        >
+                                            Manage
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
                             </summary>
 
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>LRN</th>
-                                            <th>Student</th>
-                                            <th>School Year</th>
-                                            <th>Enrollment Status</th>
-                                            <th>Documents</th>
-                                        </tr>
-                                    </thead>
+                            <div id="<?= e($secBlockId) ?>" class="mt-2" data-transfer-active="0">
+                                <?php if ($canManageTransfers): ?>
+                                    <form method="POST" id="transferForm_<?= e($secBlockId) ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+                                        <input type="hidden" name="enrollment_action" value="transfer_section">
 
-                                    <tbody>
-                                        <?php foreach ($learners as $i => $en): ?>
-                                            <tr>
-                                                <td><?= $i + 1 ?></td>
-                                                <td><?= e($en['student_lrn']) ?></td>
-                                                <td><?= e($en['last_name'] . ', ' . $en['first_name']) ?></td>
-                                                <td><?= e($en['school_year_name']) ?></td>
-                                                <td><?= e($en['enrollment_status']) ?></td>
-                                                <td>
-                                                    <?php $recordDocs = $documentsByLrn[$en['student_lrn']] ?? []; ?>
+                                        <div class="transfer-toolbar bg-light border rounded p-3 mb-3" style="display:none;">
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-md-5">
+                                                    <label class="form-label mb-1">
+                                                        Transfer selected <strong><?= e($grade) ?></strong> students to section
+                                                    </label>
+                                                    <select class="form-select form-select-sm" name="new_section_id" required>
+                                                        <option value="">-- Select available section --</option>
+                                                        <?php foreach ($gradeAvailableSections as $avail): ?>
+                                                            <option value="<?= (int)$avail['section_id'] ?>">
+                                                                <?= e($avail['section_name'] . ' (' . $avail['occupied'] . '/' . $avail['capacity'] . ' slots)') ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
 
-                                                    <?php if ($recordDocs): ?>
-                                                        <details>
-                                                            <summary class="btn btn-sm btn-outline-primary">
-                                                                View Documents (<?= count($recordDocs) ?>)
-                                                            </summary>
+                                                <div class="col-auto">
+                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                        Transfer Selected
+                                                    </button>
+                                                </div>
 
-                                                            <div class="mt-2">
-                                                                <table class="table table-bordered table-sm mb-0">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Document</th>
-                                                                            <th>Status</th>
-                                                                            <th>Remarks</th>
-                                                                            <th>Preview</th>
-                                                                        </tr>
-                                                                    </thead>
+                                                <div class="col-auto">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm btn-outline-secondary"
+                                                        onclick="toggleSectionTransferMode('<?= e($secBlockId) ?>', false);"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                                    <tbody>
-                                                                        <?php foreach ($recordDocs as $document): ?>
-                                                                            <tr>
-                                                                                <td><?= e($document['document_name']) ?></td>
-                                                                                <td><?= e($document['verification_status']) ?></td>
-                                                                                <td><?= e($document['remarks'] ?? '') ?></td>
-                                                                                <td>
-                                                                                    <a
-                                                                                        class="btn btn-sm btn-outline-secondary"
-                                                                                        href="../students/student_file.php?id=<?= (int)$document['file_id'] ?>"
-                                                                                        target="_blank"
-                                                                                        rel="noopener"
-                                                                                    >
-                                                                                        Preview
-                                                                                    </a>
-                                                                                </td>
-                                                                            </tr>
-                                                                        <?php endforeach; ?>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </details>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">No documents uploaded</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="transfer-select-col" style="display:none; width: 36px;">
+                                                            <input
+                                                                type="checkbox"
+                                                                class="form-check-input select-all-section-students"
+                                                                aria-label="Select all students in section"
+                                                                onchange="toggleAllSectionStudents('<?= e($secBlockId) ?>', this.checked);"
+                                                            >
+                                                        </th>
+                                                        <th>#</th>
+                                                        <th>LRN</th>
+                                                        <th>Student</th>
+                                                        <th>School Year</th>
+                                                        <th>Enrollment Status</th>
+                                                        <th>Documents</th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody>
+                                                    <?php foreach ($learners as $i => $en): ?>
+                                                        <tr>
+                                                            <td class="transfer-select-col" style="display:none;">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    class="form-check-input section-student-checkbox"
+                                                                    name="enrollment_ids[]"
+                                                                    value="<?= (int)$en['enrollment_id'] ?>"
+                                                                    aria-label="Select <?= e($en['last_name'] . ', ' . $en['first_name']) ?>"
+                                                                >
+                                                            </td>
+                                                            <td><?= $i + 1 ?></td>
+                                                            <td><?= e($en['student_lrn']) ?></td>
+                                                            <td><?= e($en['last_name'] . ', ' . $en['first_name']) ?></td>
+                                                            <td><?= e($en['school_year_name']) ?></td>
+                                                            <td><?= e($en['enrollment_status']) ?></td>
+                                                            <td>
+                                                                <?php $recordDocs = $documentsByLrn[$en['student_lrn']] ?? []; ?>
+
+                                                                <?php if ($recordDocs): ?>
+                                                                    <details>
+                                                                        <summary class="btn btn-sm btn-outline-primary">
+                                                                            View Documents (<?= count($recordDocs) ?>)
+                                                                        </summary>
+
+                                                                        <div class="mt-2">
+                                                                            <table class="table table-bordered table-sm mb-0">
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th>Document</th>
+                                                                                        <th>Status</th>
+                                                                                        <th>Remarks</th>
+                                                                                        <th>Preview</th>
+                                                                                    </tr>
+                                                                                </thead>
+
+                                                                                <tbody>
+                                                                                    <?php foreach ($recordDocs as $document): ?>
+                                                                                        <tr>
+                                                                                            <td><?= e($document['document_name']) ?></td>
+                                                                                            <td><?= e($document['verification_status']) ?></td>
+                                                                                            <td><?= e($document['remarks'] ?? '') ?></td>
+                                                                                            <td>
+                                                                                                <a
+                                                                                                    class="btn btn-sm btn-outline-secondary"
+                                                                                                    href="../students/student_file.php?id=<?= (int)$document['file_id'] ?>"
+                                                                                                    target="_blank"
+                                                                                                    rel="noopener"
+                                                                                                >
+                                                                                                    Preview
+                                                                                                </a>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    <?php endforeach; ?>
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </details>
+                                                                <?php else: ?>
+                                                                    <span class="text-muted">No documents uploaded</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </form>
+                                <?php else: ?>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>LRN</th>
+                                                    <th>Student</th>
+                                                    <th>School Year</th>
+                                                    <th>Enrollment Status</th>
+                                                    <th>Documents</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                <?php foreach ($learners as $i => $en): ?>
+                                                    <tr>
+                                                        <td><?= $i + 1 ?></td>
+                                                        <td><?= e($en['student_lrn']) ?></td>
+                                                        <td><?= e($en['last_name'] . ', ' . $en['first_name']) ?></td>
+                                                        <td><?= e($en['school_year_name']) ?></td>
+                                                        <td><?= e($en['enrollment_status']) ?></td>
+                                                        <td>
+                                                            <?php $recordDocs = $documentsByLrn[$en['student_lrn']] ?? []; ?>
+
+                                                            <?php if ($recordDocs): ?>
+                                                                <details>
+                                                                    <summary class="btn btn-sm btn-outline-primary">
+                                                                        View Documents (<?= count($recordDocs) ?>)
+                                                                    </summary>
+
+                                                                    <div class="mt-2">
+                                                                        <table class="table table-bordered table-sm mb-0">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    <th>Document</th>
+                                                                                    <th>Status</th>
+                                                                                    <th>Remarks</th>
+                                                                                    <th>Preview</th>
+                                                                                </tr>
+                                                                            </thead>
+
+                                                                            <tbody>
+                                                                                <?php foreach ($recordDocs as $document): ?>
+                                                                                    <tr>
+                                                                                        <td><?= e($document['document_name']) ?></td>
+                                                                                        <td><?= e($document['verification_status']) ?></td>
+                                                                                        <td><?= e($document['remarks'] ?? '') ?></td>
+                                                                                        <td>
+                                                                                            <a
+                                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                                href="../students/student_file.php?id=<?= (int)$document['file_id'] ?>"
+                                                                                                target="_blank"
+                                                                                                rel="noopener"
+                                                                                            >
+                                                                                                Preview
+                                                                                            </a>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                <?php endforeach; ?>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </details>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">No documents uploaded</span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </details>
                     <?php endforeach; ?>
@@ -1233,6 +1624,41 @@ $applications = [];
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+
+    <script>
+    function toggleSectionTransferMode(blockId, forceState) {
+        var block = document.getElementById(blockId);
+        if (!block) return;
+
+        var isActive = block.getAttribute('data-transfer-active') === '1';
+        var nextActive = (typeof forceState === 'boolean') ? forceState : !isActive;
+        block.setAttribute('data-transfer-active', nextActive ? '1' : '0');
+
+        var toolbar = block.querySelector('.transfer-toolbar');
+        if (toolbar) {
+            toolbar.style.display = nextActive ? 'block' : 'none';
+        }
+
+        var selectCols = block.querySelectorAll('.transfer-select-col');
+        selectCols.forEach(function(cell) {
+            cell.style.display = nextActive ? '' : 'none';
+        });
+
+        if (!nextActive) {
+            block.querySelectorAll('.section-student-checkbox, .select-all-section-students').forEach(function(cb) {
+                cb.checked = false;
+            });
+        }
+    }
+
+    function toggleAllSectionStudents(blockId, checked) {
+        var block = document.getElementById(blockId);
+        if (!block) return;
+        block.querySelectorAll('.section-student-checkbox').forEach(function(cb) {
+            cb.checked = checked;
+        });
+    }
+    </script>
 
 <?php elseif ($module === 'records'): ?>
 
