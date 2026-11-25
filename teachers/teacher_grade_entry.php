@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 if (isset($_GET['saved'])) $message='Grades saved successfully.';
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Grade Encoding</h1><p>Enter grades only for subjects assigned to you.</p></div></div>
+<div class="page-heading"><div><h1>Grade Encoding</h1></div></div>
 <?php if($error):?><div class="alert alert-danger"><?=e($error)?></div><?php endif;?>
 <?php if($message):?><div class="alert alert-success"><?=e($message)?></div><?php endif;?>
 <div class="card p-3 mb-3"><form method="get" class="row g-3 align-items-end"><div class="col-md-8"><label class="form-label">Assigned Subject / Section</label><select class="form-select" name="assignment_id" required><?php foreach($assignments as $a):?><option value="<?=(int)$a['section_subject_id']?>" <?=$selectedId===(int)$a['section_subject_id']?'selected':''?>><?=e($a['grade_level'].' - '.$a['section_name'].' / '.$a['subject_name'].' ('.$a['school_year_name'].')')?></option><?php endforeach;?></select></div><div class="col-md-2"><label class="form-label">Term</label><select class="form-select" name="grading_period"><?php foreach($periods as $p):?><option value="<?=e($p)?>" <?=$period===$p?'selected':''?>><?=e($p)?></option><?php endforeach;?></select></div><div class="col-md-2"><button class="btn btn-outline-primary w-100">Load</button></div></form></div>
