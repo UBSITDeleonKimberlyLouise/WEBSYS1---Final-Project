@@ -614,8 +614,8 @@ $applications = [];
                 "programs" => "Scholarship Programs",
                 "applications" => "Scholarship Applications",
                 "monitoring" => "Scholarship Monitoring",
-                "announcements" => "Announcements",
-                "reports" => "Reports"
+                "announcements" => "",
+                "reports" => ""
             ][$module] ?? "Module") ?>
         </h1>
     </div>
@@ -1036,10 +1036,6 @@ $applications = [];
                         >
                     </div>
                 </div>
-
-                <p class="small-note mt-2">
-                    One enrollment per learner per school year. Both JHS and SHS use Term 1, Term 2, and Term 3.
-                </p>
 
                 <button class="btn btn-primary" <?= $currentSchoolYear ? '' : 'disabled' ?>>
                     Save Enrollment
@@ -1540,7 +1536,7 @@ $applications = [];
             </h5>
 
             <p class="text-muted mb-3">
-                School forms for learner registration, attendance, and promotion. Select a form to display it below.
+            Select a form to display.
             </p>
 
             <div class="d-flex flex-wrap gap-2">

@@ -247,7 +247,6 @@ require 'includes/header.php';
 
 <div class="page-heading">
     <div>
-        <h1>Grading Management</h1>
         <p>Manage terms and review grade correction requests.</p>
     </div>
 </div>

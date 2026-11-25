@@ -142,12 +142,12 @@ require 'includes/header.php';
 
 <div class="page-heading">
     <div>
-        <h1>My Schedule</h1>
+        <h1>My Teaching Schedule</h1>
 
         <p>
             <?= $role === 'Teacher Adviser'
                 ? 'Advisory class and assigned teaching schedules in one page'
-                : 'Your assigned teaching schedule' ?>
+                : '' ?>
         </p>
     </div>
 
@@ -176,8 +176,6 @@ require 'includes/header.php';
 <?php endif; ?>
 
 <div class="card p-3">
-    <h5 class="mb-3">My Teaching Schedule</h5>
-
     <?php scheduleTable($teaching); ?>
 </div>
 

@@ -31,21 +31,21 @@ $menus = [
 
     'Teacher Adviser' => [
         ['Dashboard', '../shared/dashboard.php', 'Home'],
-        ['My Profile', '../teachers/teacher_profile.php', 'Profile'],
+        ['Profile', '../teachers/teacher_profile.php', 'Profile'],
         ['Advisory Grades', '../advisers/advisory_class.php', 'Advisory'],
         ['Assigned Teaching Subjects', '../teachers/teacher_grade_entry.php', 'Grades'],
         ['Attendance', '../advisers/adviser_attendance.php', 'Attendance'],
         ['Advisory Schedule', '../advisers/adviser_subjects.php', 'Setup'],
-        ['My Schedule', '../teachers/teacher_schedule.php', 'Schedule'],
+        ['Schedule', '../teachers/teacher_schedule.php', 'Schedule'],
         ['Past Records', '../advisers/adviser_past_records.php', 'History'],
         ['Reports', '../advisers/adviser_monthly_attendance.php', 'Reports'],
     ],
 
     'Subject Teacher' => [
         ['Dashboard', '../shared/dashboard.php', 'Home'],
-        ['My Profile', '../teachers/teacher_profile.php', 'Profile'],
-        ['My Assigned Subjects', '../teachers/teacher_grade_entry.php', 'Grades'],
-        ['My Schedule', '../teachers/teacher_schedule.php', 'Schedule'],
+        ['Profile', '../teachers/teacher_profile.php', 'Profile'],
+        ['Gradebook', '../teachers/teacher_grade_entry.php', 'Grades'],
+        ['Schedule', '../teachers/teacher_schedule.php', 'Schedule'],
         ['Past Records', '../teachers/teacher_past_records.php', 'History'],
     ],
 

@@ -130,7 +130,6 @@ require 'includes/header.php';
 
 <div class="page-heading">
     <div>
-        <h1>Password Reset Requests</h1>
         <p>Reset the password using the registered first and last name after verifying identity.</p>
     </div>
 </div>

@@ -145,10 +145,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>Past Class Records</h1>
-        <p>
-            Previous subjects, student grades, and subject attendance ·
-            Read-only
-        </p>
     </div>
 </div>
 
