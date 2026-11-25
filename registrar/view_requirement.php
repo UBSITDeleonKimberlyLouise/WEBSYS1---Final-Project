@@ -1,4 +1,60 @@
+
 <?php
 chdir(dirname(__DIR__));
 
-session_start();require_once 'dbconn.php';require_once 'includes/functions.php';requireRole(['School Registrar','System Administrator']);$id=(int)($_GET['id']??0);$q=$pdo->prepare('SELECT file_path,document_name FROM enrollment_documents WHERE enrollment_document_id=?');$q->execute([$id]);$doc=$q->fetch();if(!$doc||!$doc['file_path']){http_response_code(404);exit('File not found.');}$base=realpath(dirname(__DIR__).'/uploads/requirements');$file=realpath(dirname(__DIR__).'/'.$doc['file_path']);if(!$base||!$file||strpos($file,$base.DIRECTORY_SEPARATOR)!==0){http_response_code(404);exit('File not found.');}$ext=strtolower(pathinfo($file,PATHINFO_EXTENSION));$types=['pdf'=>'application/pdf','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png'];if(!isset($types[$ext])){http_response_code(415);exit('Unsupported file type.');}header('Content-Type: '.$types[$ext]);header('Content-Disposition: inline; filename="'.basename($file).'"');header('X-Content-Type-Options: nosniff');readfile($file);exit;
+session_start();
+
+require_once 'dbconn.php';
+require_once 'includes/functions.php';
+
+requireRole(['School Registrar', 'System Administrator']);
+
+$id = (int) ($_GET['id'] ?? 0);
+
+$q = $pdo->prepare(
+    'SELECT file_path, document_name
+    FROM enrollment_documents
+    WHERE enrollment_document_id = ?'
+);
+
+$q->execute([$id]);
+
+$doc = $q->fetch();
+
+if (!$doc || !$doc['file_path']) {
+    http_response_code(404);
+    exit('File not found.');
+}
+
+$base = realpath(dirname(__DIR__) . '/uploads/requirements');
+$file = realpath(dirname(__DIR__) . '/' . $doc['file_path']);
+
+if (
+    !$base
+    || !$file
+    || strpos($file, $base . DIRECTORY_SEPARATOR) !== 0
+) {
+    http_response_code(404);
+    exit('File not found.');
+}
+
+$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+$types = [
+    'pdf' => 'application/pdf',
+    'jpg' => 'image/jpeg',
+    'jpeg' => 'image/jpeg',
+    'png' => 'image/png'
+];
+
+if (!isset($types[$ext])) {
+    http_response_code(415);
+    exit('Unsupported file type.');
+}
+
+header('Content-Type: ' . $types[$ext]);
+header('Content-Disposition: inline; filename="' . basename($file) . '"');
+header('X-Content-Type-Options: nosniff');
+
+readfile($file);
+exit;

@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/scholarship_files.php';
+require_once 'scholarship/scholarship_files.php';
 
 $statuses = ['Pending', 'For Verification', 'Verified', 'Submitted to Provider', 'Approved', 'Rejected', 'Withdrawn'];
 $fStatus = in_array($_GET['status'] ?? '', $statuses, true) ? $_GET['status'] : '';
@@ -38,7 +38,7 @@ $badge = function ($s) { return ['Approved' => 'success', 'Verified' => 'info', 
       <?php foreach ($docs as $d): ?>
         <form method="POST" class="row g-2 align-items-end border-bottom pb-2 mb-2">
           <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>"><input type="hidden" name="action" value="verify_document"><input type="hidden" name="application_document_id" value="<?= (int)$d['application_document_id'] ?>">
-          <div class="col-md-4"><strong><?= e($d['document_name']) ?></strong><br><?php if ($d['file_path']): ?><a target="_blank" rel="noopener" href="../shared/scholarship_file.php?id=<?= (int)$d['application_document_id'] ?>">View file</a><?php else: ?><span class="text-muted">Not submitted</span><?php endif; ?></div>
+          <div class="col-md-4"><strong><?= e($d['document_name']) ?></strong><br><?php if ($d['file_path']): ?><a target="_blank" rel="noopener" href="scholarship_document.php?id=<?= (int)$d['application_document_id'] ?>">View file</a><?php else: ?><span class="text-muted">Not submitted</span><?php endif; ?></div>
           <div class="col-md-3"><label class="form-label">Verification</label><select class="form-select" name="verification_status" <?= ($closed || !$d['file_path']) ? 'disabled' : '' ?>><?php foreach (['Pending', 'Accepted', 'Rejected'] as $vs): ?><option <?= $d['verification_status'] === $vs ? 'selected' : '' ?>><?= e($vs) ?></option><?php endforeach; ?></select></div>
           <div class="col-md-3"><label class="form-label">Remarks</label><input class="form-control" name="remarks" maxlength="255" value="<?= e($d['remarks']) ?>" <?= ($closed || !$d['file_path']) ? 'disabled' : '' ?>></div>
           <div class="col-md-2"><?php if (!$closed && $d['file_path']): ?><button class="btn btn-sm btn-outline-primary">Save</button><?php else: ?><span class="badge text-bg-secondary"><?= e($d['verification_status']) ?></span><?php endif; ?></div>

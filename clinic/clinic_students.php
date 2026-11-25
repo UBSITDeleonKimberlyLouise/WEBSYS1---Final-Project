@@ -45,7 +45,7 @@ if ($searched) {
 }
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Student Masterlist</h1></div></div>
+<div class="page-heading"><div><h1>Student Masterlist</h1><p>Search by LRN or name. Matching student information appears immediately below.</p></div></div>
 <div class="card p-3 mb-3">
     <form method="post" class="row g-2">
         <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">

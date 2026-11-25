@@ -1,7 +1,6 @@
 <?php
 chdir(dirname(__DIR__));
 
-// Admin and Registrar use the same enrollment verification workflow.
 session_start();
 require_once 'includes/functions.php';
 requireRole(['System Administrator']);

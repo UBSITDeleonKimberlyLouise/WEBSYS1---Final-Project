@@ -1,6 +1,7 @@
 <?php
 chdir(dirname(__DIR__));
 
+/** Central audience rules used by every announcements viewer. */
 function announcementAudiencesForRole(string $role): array {
     $map = [
         'System Administrator' => ['All'],
@@ -10,7 +11,6 @@ function announcementAudiencesForRole(string $role): array {
         'Subject Teacher' => ['All', 'Teachers', 'Subject Teachers'],
         'Student' => ['All', 'Students'],
         'Clinic Personnel' => ['All'],
-        'Scholarship Coordinator' => ['All'],
     ];
     return $map[$role] ?? ['All'];
 }

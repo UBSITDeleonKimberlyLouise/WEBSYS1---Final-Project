@@ -14,7 +14,7 @@ $stmt->execute([$userId]); $recentAssessments = $stmt->fetchAll(PDO::FETCH_ASSOC
 $recentViews = $_SESSION['guidance_recent_views'] ?? [];
 require 'includes/header.php';
 ?>
-<div class="page-heading"><div><h1>Guidance Dashboard</h1></div></div>
+<div class="page-heading"><div><h1>Guidance Dashboard</h1><p>Your interview assessments and recently viewed student profiles.</p></div></div>
 <div class="row g-3 mb-4">
 <?php foreach ([['Students Assessed',$stats['assessed']],['Passed',$stats['passed']],['Failed',$stats['failed']]] as $stat): ?><div class="col-md-4"><div class="card stat-card"><div class="stat-label"><?= e($stat[0]) ?></div><div class="stat-value"><?= (int)$stat[1] ?></div></div></div><?php endforeach; ?>
 </div>
