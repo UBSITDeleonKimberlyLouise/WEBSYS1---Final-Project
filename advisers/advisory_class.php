@@ -34,6 +34,9 @@ if (!$valid) {
 
 $students = [];
 $grades = [];
+$selected = null;
+$terms = ['Term 1', 'Term 2', 'Term 3'];
+$gwa = [];
 
 if ($id) {
     $q = $pdo->prepare("
@@ -82,6 +85,19 @@ if ($id) {
             $grades[$key]['teacher_name'] = $r['teacher_name'] ?: 'Not assigned';
             $grades[$key][$r['grading_period'] ?? 'none'] = $r;
         }
+
+        foreach ($terms as $term) {
+            $sum = 0;
+            $count = 0;
+            foreach ($grades as $g) {
+                $val = $g[$term]['grade_value'] ?? null;
+                if ($val !== null && is_numeric($val)) {
+                    $sum += (float)$val;
+                    $count++;
+                }
+            }
+            $gwa[$term] = ['avg' => $count ? $sum / $count : null, 'count' => $count];
+        }
     }
 }
 
@@ -117,7 +133,7 @@ require 'includes/header.php';
     <div class="card p-3 mb-3">
         <h5>Students</h5>
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -127,71 +143,90 @@ require 'includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($students as $i => $st): ?>
-                        <tr>
+                    <?php foreach ($students as $i => $st):
+                        $isOpen = $selected && (int)$selected['enrollment_id'] === (int)$st['enrollment_id'];
+                    ?>
+                        <tr class="<?= $isOpen ? 'table-active' : '' ?>">
                             <td><?= $i + 1 ?></td>
                             <td><?= e($st['student_lrn']) ?></td>
                             <td><?= e($st['student_name']) ?></td>
                             <td>
-                                <form method="post" action="advisory_class.php#student-grades">
+                                <form method="post" action="advisory_class.php<?= $isOpen ? '' : '#student-grades' ?>">
                                     <input type="hidden" name="section_id" value="<?= $id ?>">
-                                    <input type="hidden" name="student" value="<?= (int)$st['enrollment_id'] ?>">
-                                    <button class="btn btn-sm btn-outline-primary">Grades</button>
+                                    <input type="hidden" name="student" value="<?= $isOpen ? 0 : (int)$st['enrollment_id'] ?>">
+                                    <button class="btn btn-sm btn-outline-primary"><?= $isOpen ? 'Hide' : 'Grades' ?></button>
                                 </form>
                             </td>
                         </tr>
+
+                        <?php if ($isOpen): ?>
+                            <tr id="student-grades">
+                                <td colspan="4" class="p-3 bg-light">
+                                    <h6 class="mb-3"><?= e($selected['student_name']) ?> — All Subjects</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered bg-white mb-2">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Subject</th>
+                                                    <th>Assigned Teacher</th>
+                                                    <th>Term 1</th>
+                                                    <th>Term 2</th>
+                                                    <th>Term 3</th>
+                                                    <th>Academic Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $n = 0;
+                                                if (!$grades) echo '<tr><td colspan="7">No subjects have been configured for this section. Open Class Setup to add subjects.</td></tr>';
+                                                foreach ($grades as $g):
+                                                    $n++;
+                                                    $final = $g['Term 3'] ?? [];
+                                                    $status = $final['result_status'] ?? null;
+                                                    if (isset($final['grade_value']) && $final['grade_value'] !== null) {
+                                                        $status = $final['grade_value'] >= 75 ? 'Passed' : 'Failed';
+                                                    }
+                                                ?>
+                                                    <tr>
+                                                        <td><?= $n ?></td>
+                                                        <td><?= e($g['subject_name']) ?></td>
+                                                        <td><?= e($g['teacher_name']) ?></td>
+                                                        <?php foreach ($terms as $period):
+                                                            $v = $g[$period] ?? [];
+                                                        ?>
+                                                            <td><?= e($v['grade_value'] ?? ($v['result_status'] ?? '—')) ?></td>
+                                                        <?php endforeach; ?>
+                                                        <td><?= e($status ?? '') ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                            <?php if ($grades): ?>
+                                                <tfoot>
+                                                    <tr class="fw-bold">
+                                                        <td colspan="3" class="text-end">GWA (General Weighted Average)</td>
+                                                        <?php foreach ($terms as $term): ?>
+                                                            <td>
+                                                                <?= $gwa[$term]['avg'] !== null ? e(number_format($gwa[$term]['avg'], 2)) : '—' ?>
+                                                                <div class="small fw-normal text-muted">
+                                                                    <?= (int)$gwa[$term]['count'] ?> of <?= count($grades) ?> graded
+                                                                </div>
+                                                            </td>
+                                                        <?php endforeach; ?>
+                                                        <td></td>
+                                                    </tr>
+                                                </tfoot>
+                                            <?php endif; ?>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
-
-    <?php if (isset($selected) && $selected): ?>
-        <div class="card p-3" id="student-grades">
-            <h5><?= e($selected['student_name']) ?> — All Subjects</h5>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Subject</th>
-                            <th>Assigned Teacher</th>
-                            <th>Term 1</th>
-                            <th>Term 2</th>
-                            <th>Term 3</th>
-                            <th>Academic Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $i = 0;
-                        if (!$grades) echo '<tr><td colspan="7">No subjects have been configured for this section. Open Class Setup to add subjects.</td></tr>';
-                        foreach ($grades as $subjectId => $g):
-                            $i++;
-                            $final = $g['Term 3'] ?? [];
-                            $status = $final['result_status'] ?? null;
-                            if (isset($final['grade_value']) && $final['grade_value'] !== null) {
-                                $status = $final['grade_value'] >= 75 ? 'Passed' : 'Failed';
-                            }
-                        ?>
-                            <tr>
-                                <td><?= $i ?></td>
-                                <td><?= e($g['subject_name']) ?></td>
-                                <td><?= e($g['teacher_name']) ?></td>
-                                <?php foreach (['Term 1', 'Term 2', 'Term 3'] as $period):
-                                    $v = $g[$period] ?? [];
-                                ?>
-                                    <td><?= e($v['grade_value'] ?? ($v['result_status'] ?? '—')) ?></td>
-                                <?php endforeach; ?>
-                                <td><?= e($status ?? '') ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            <p class="small text-muted">Grades are read-only here. Grades are encoded by the teacher assigned to each subject. Locked-grade corrections require Registrar authorization.</p>
-        </div>
-    <?php endif; ?>
 <?php endif; ?>
 
 <?php require 'includes/footer.php'; ?>

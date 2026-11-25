@@ -1,4 +1,3 @@
-
 <?php
 chdir(dirname(__DIR__));
 
@@ -583,6 +582,28 @@ $programs = [];
 $applications = [];
 ?>
 
+<style>
+    .workflow-step.active {
+        border: 2px solid #0d6efd !important;
+        background-color: #f0f6ff !important;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.14);
+    }
+
+    .workflow-step.active .workflow-number {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+    }
+
+    .workflow-step.active strong {
+        color: #0a58ca;
+    }
+
+    .workflow-step.completed .workflow-number {
+        background-color: #198754 !important;
+        color: #ffffff !important;
+    }
+</style>
+
 <div class="page-heading">
     <div>
         <h1>
@@ -597,7 +618,6 @@ $applications = [];
                 "reports" => "Reports"
             ][$module] ?? "Module") ?>
         </h1>
-        <p><?= e($role) ?> workspace</p>
     </div>
 
     <?php if ($module === 'reports'): ?>
@@ -655,7 +675,7 @@ $applications = [];
     </div>
 
     <div class="workflow-steps">
-        <div class="workflow-step">
+        <div class="workflow-step active" aria-current="step">
             <span class="workflow-number">1</span>
             <span>
                 <strong>Student Profile</strong>
@@ -806,7 +826,7 @@ $applications = [];
 <?php elseif ($module === 'enrollments'): ?>
 
     <div class="workflow-steps">
-        <div class="workflow-step">
+        <div class="workflow-step completed">
             <span class="workflow-number">1</span>
             <span>
                 <strong>Student Profile</strong>
@@ -814,7 +834,7 @@ $applications = [];
             </span>
         </div>
 
-        <div class="workflow-step">
+        <div class="workflow-step active" aria-current="step">
             <span class="workflow-number">2</span>
             <span>
                 <strong>Enrollment</strong>
@@ -829,10 +849,6 @@ $applications = [];
                 <small>Registrar checks submitted paper documents and creates the login</small>
             </span>
         </div>
-    </div>
-
-    <div class="alert alert-info">
-        Students submit their documents directly to the school. The Registrar records which papers were received, marks missing or incomplete requirements, and adds a note. No student file upload or temporary submission code is needed. The student account is created in Step 3. JHS and SHS use one enrollment for the full school year.
     </div>
 
     <details class="card p-3 mb-3">
@@ -920,7 +936,7 @@ $applications = [];
     </details>
 
     <details class="card p-3 mb-4">
-        <summary class="fw-bold">+ Create Enrollment Record</summary>
+        <summary class="fw-bold">Create Enrollment Record</summary>
 
         <div class="mt-3">
             <form method="POST">
@@ -957,7 +973,7 @@ $applications = [];
 
                     <div class="col-md-2">
                         <label class="form-label">Grade Level</label>
-                        <select class="form-select" name="grade_level" required>
+                        <select class="form-select" name="grade_level" id="createEnrollGradeLevel" required>
                             <?php foreach (['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'] as $g): ?>
                                 <option><?= e($g) ?></option>
                             <?php endforeach; ?>
@@ -976,11 +992,15 @@ $applications = [];
 
                     <div class="col-md-3">
                         <label class="form-label">Section</label>
-                        <select class="form-select" name="section_id">
-                            <option value="">Not assigned</option>
+                        <select class="form-select" name="section_id" id="createEnrollSectionSelect">
+                            <option value="" data-grade="" data-track="">Not assigned</option>
                             <?php foreach ($sections as $s): ?>
                                 <?php if (!$currentSchoolYear || (int)$s['school_year_id'] !== (int)$currentSchoolYear['school_year_id'] || $s['section_status']==='Closed' || $s['occupied'] >= $s['capacity']) continue; ?>
-                                <option value="<?= e($s['section_id']) ?>">
+                                <option
+                                    value="<?= e($s['section_id']) ?>"
+                                    data-grade="<?= e($s['grade_level']) ?>"
+                                    data-track="<?= e($s['shs_track'] ?? '') ?>"
+                                >
                                     <?= e($s['school_year_name'] . ' / ' . $s['grade_level'] . ' / ' . $s['section_name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -989,7 +1009,7 @@ $applications = [];
 
                     <div class="col-md-3">
                         <label class="form-label">SHS Track (Grades 11–12)</label>
-                        <select class="form-select" name="shs_track">
+                        <select class="form-select" name="shs_track" id="createEnrollShsTrack">
                             <option value="">Not applicable (JHS)</option>
                             <option value="Academic">Academic</option>
                             <option value="TechPro">Technical-Professional (TechPro)</option>
@@ -1027,6 +1047,67 @@ $applications = [];
             </form>
         </div>
     </details>
+    <script>
+    (function() {
+        var gradeEl = document.getElementById('createEnrollGradeLevel');
+        var trackEl = document.getElementById('createEnrollShsTrack');
+        var secEl = document.getElementById('createEnrollSectionSelect');
+        if (!gradeEl || !secEl) return;
+
+        var allSectionOptions = Array.prototype.slice.call(secEl.options).map(function(opt) {
+            return {
+                value: opt.value,
+                text: opt.text,
+                grade: opt.getAttribute('data-grade') || '',
+                track: opt.getAttribute('data-track') || ''
+            };
+        });
+
+        function filterCreateEnrollmentSections() {
+            var selectedGrade = gradeEl.value;
+            var isShs = (selectedGrade === 'Grade 11' || selectedGrade === 'Grade 12');
+            var selectedTrack = (trackEl && isShs) ? trackEl.value : '';
+
+            if (trackEl && !isShs) {
+                trackEl.value = '';
+            }
+
+            var currentVal = secEl.value;
+            secEl.innerHTML = '';
+
+            allSectionOptions.forEach(function(item) {
+                if (item.value === '') {
+                    var blankOpt = document.createElement('option');
+                    blankOpt.value = '';
+                    blankOpt.text = item.text;
+                    secEl.appendChild(blankOpt);
+                    return;
+                }
+
+                var matchesGrade = (item.grade === selectedGrade);
+                var matchesTrack = !isShs || !selectedTrack || (item.track === selectedTrack);
+
+                if (matchesGrade && matchesTrack) {
+                    var opt = document.createElement('option');
+                    opt.value = item.value;
+                    opt.text = item.text;
+                    secEl.appendChild(opt);
+                }
+            });
+
+            var stillValid = Array.prototype.some.call(secEl.options, function(o) {
+                return o.value === currentVal;
+            });
+            secEl.value = stillValid ? currentVal : '';
+        }
+
+        gradeEl.addEventListener('change', filterCreateEnrollmentSections);
+        if (trackEl) {
+            trackEl.addEventListener('change', filterCreateEnrollmentSections);
+        }
+        filterCreateEnrollmentSections();
+    })();
+    </script>
 
     <?php
     $documentsByLrn = [];
@@ -1363,7 +1444,7 @@ $applications = [];
 
     <?php if (in_array($role, ['School Registrar', 'System Administrator'], true)): ?>
         <details class="card p-3 mb-3">
-            <summary class="fw-bold">+ Create Announcement</summary>
+            <summary class="fw-bold">Create Announcement</summary>
 
             <div class="mt-3">
                 <h5>Create Announcement</h5>

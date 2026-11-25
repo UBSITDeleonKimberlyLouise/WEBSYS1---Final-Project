@@ -1,4 +1,3 @@
-
 <?php
 chdir(dirname(__DIR__));
 
@@ -103,6 +102,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data[$field] = trim($_POST[$field] ?? '');
         }
 
+        $emailLabels = [
+            'student_email' => 'Student email',
+            'parent_email' => 'Parent / Guardian email',
+        ];
+
+        foreach ($emailLabels as $field => $label) {
+            $value = $data[$field];
+            if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception($label . ' must be a valid email address.');
+            }
+        }
+
+        $contactLabels = [
+            'parent_contact' => 'Parent / Guardian contact number',
+            'student_contact_number' => 'Student contact number',
+            'father_contact_number' => 'Father contact number',
+            'mother_contact_number' => 'Mother contact number',
+            'guardian_contact_number' => 'Guardian contact number',
+            'emergency_contact_number' => 'Emergency contact number',
+        ];
+
+        foreach ($contactLabels as $field => $label) {
+            $value = $data[$field];
+            if ($value !== '' && !preg_match('/^[0-9]{11}$/', $value)) {
+                throw new Exception($label . ' must contain exactly 11 digits.');
+            }
+        }
+
         $data['distance_learning'] = $_POST['distance_learning'] ?? [];
         $data['certified'] = 1;
 
@@ -110,13 +137,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT COUNT(*)
             FROM student_registration_applications
             WHERE student_lrn = ?
-              AND application_status = 'For Verification'
         ");
-
         $query->execute([$lrn]);
 
         if ((int) $query->fetchColumn() > 0) {
-            throw new Exception('There is already a registration application awaiting verification for this LRN.');
+            throw new Exception('This LRN is already registered in the database.');
+        }
+
+        $studentEmail = $data['student_email'];
+        if ($studentEmail !== '') {
+            $query = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM student_registration_applications
+                WHERE LOWER(JSON_UNQUOTE(JSON_EXTRACT(application_data, '$.student_email'))) = LOWER(?)
+            ");
+            $query->execute([$studentEmail]);
+
+            if ((int) $query->fetchColumn() > 0) {
+                throw new Exception('This student email is already registered in the database.');
+            }
+        }
+
+        $psaBirthCertNo = $data['psa_birth_certificate_no'];
+        if ($psaBirthCertNo !== '') {
+            $query = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM student_registration_applications
+                WHERE JSON_UNQUOTE(JSON_EXTRACT(application_data, '$.psa_birth_certificate_no')) = ?
+            ");
+            $query->execute([$psaBirthCertNo]);
+
+            if ((int) $query->fetchColumn() > 0) {
+                throw new Exception('This PSA Birth Certificate No. is already registered in the database.');
+            }
         }
 
         $query = $pdo->prepare("
@@ -159,6 +212,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : $e->getMessage();
     }
 }
+
+$phoneFields = [
+    'student_contact_number',
+    'father_contact_number',
+    'mother_contact_number',
+    'guardian_contact_number',
+    'parent_contact',
+    'emergency_contact_number',
+];
 ?>
 
 <!doctype html>
@@ -189,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger">
+            <div class="alert alert-danger" role="alert">
                 <?= e($error) ?>
             </div>
         <?php endif; ?>
@@ -200,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php else: ?>
 
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" novalidate>
 
                 <input
                     type="hidden"
@@ -216,8 +278,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input
                             class="form-control"
                             name="student_lrn"
+                            value="<?= e($_POST['student_lrn'] ?? '') ?>"
                             maxlength="12"
                             pattern="[0-9]{12}"
+                            title="LRN must contain exactly 12 digits"
                             required
                         >
                     </div>
@@ -226,16 +290,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label">Enrollment Category *</label>
                         <select class="form-select" name="enrollment_category" required>
                             <option value="">Select</option>
-                            <option>Incoming</option>
-                            <option>Returning</option>
-                            <option>Transferee</option>
-                            <option>Balik-Aral</option>
+                            <?php foreach (['Incoming', 'Returning', 'Transferee', 'Balik-Aral'] as $cat): ?>
+                                <option <?= (($_POST['enrollment_category'] ?? '') === $cat) ? 'selected' : '' ?>><?= e($cat) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">PSA Birth Certificate No.</label>
-                        <input class="form-control" name="psa_birth_certificate_no">
+                        <input class="form-control" name="psa_birth_certificate_no" value="<?= e($_POST['psa_birth_certificate_no'] ?? '') ?>">
                     </div>
                 </div>
 
@@ -257,6 +320,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ];
 
                     foreach ($inputs as $name => $label):
+                        $isPhone = in_array($name, $phoneFields, true);
+                        $isEmail = ($name === 'student_email');
                     ?>
                         <div class="col-md-4">
                             <label class="form-label">
@@ -266,7 +331,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input
                                 class="form-control"
                                 name="<?= $name ?>"
+                                value="<?= e($_POST[$name] ?? '') ?>"
                                 <?= $name === 'birth_date' ? 'type="date"' : '' ?>
+                                <?= $isEmail ? 'type="email"' : '' ?>
+                                <?= $isPhone ? 'type="tel" maxlength="11" pattern="[0-9]{11}" title="Must be an 11-digit number"' : '' ?>
                                 <?= $name === 'birth_date' || in_array($name, ['first_name', 'last_name']) ? 'required' : '' ?>
                             >
                         </div>
@@ -276,24 +344,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label">Sex *</label>
                         <select class="form-select" name="sex" required>
                             <option value="">Select</option>
-                            <option>Male</option>
-                            <option>Female</option>
+                            <?php foreach (['Male', 'Female'] as $sexOpt): ?>
+                                <option <?= (($_POST['sex'] ?? '') === $sexOpt) ? 'selected' : '' ?>><?= e($sexOpt) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">IP Member</label>
                         <select class="form-select" name="is_ip_member">
-                            <option value="">No</option>
-                            <option value="1">Yes</option>
+                            <option value="" <?= (($_POST['is_ip_member'] ?? '') === '') ? 'selected' : '' ?>>No</option>
+                            <option value="1" <?= (($_POST['is_ip_member'] ?? '') === '1') ? 'selected' : '' ?>>Yes</option>
                         </select>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">4Ps Beneficiary</label>
                         <select class="form-select" name="is_4ps_beneficiary">
-                            <option value="">No</option>
-                            <option value="1">Yes</option>
+                            <option value="" <?= (($_POST['is_4ps_beneficiary'] ?? '') === '') ? 'selected' : '' ?>>No</option>
+                            <option value="1" <?= (($_POST['is_4ps_beneficiary'] ?? '') === '1') ? 'selected' : '' ?>>Yes</option>
                         </select>
                     </div>
                 </div>
@@ -315,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label">
                                 <?= e($label) ?>
                             </label>
-                            <input class="form-control" name="<?= $name ?>">
+                            <input class="form-control" name="<?= $name ?>" value="<?= e($_POST[$name] ?? '') ?>">
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -335,7 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 type="checkbox"
                                 name="permanent_same_as_current"
                                 value="1"
-                                checked
+                                <?= !isset($_POST['permanent_same_as_current']) || $_POST['permanent_same_as_current'] === '1' ? 'checked' : '' ?>
                             >
 
                             Same as current address
@@ -356,7 +425,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label">
                                 <?= e($label) ?>
                             </label>
-                            <input class="form-control" name="<?= $name ?>">
+                            <input class="form-control" name="<?= $name ?>" value="<?= e($_POST[$name] ?? '') ?>">
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -384,6 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'guardian_contact_number' => 'Guardian Contact',
                         'guardian_relationship' => 'Guardian Relationship'
                     ] as $name => $label):
+                        $isPhone = in_array($name, $phoneFields, true);
                     ?>
                         <div class="col-md-4">
                             <label class="form-label">
@@ -393,7 +463,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input
                                 class="form-control"
                                 name="<?= $name ?>"
+                                value="<?= e($_POST[$name] ?? '') ?>"
                                 <?= $name === 'parent_email' ? 'type="email"' : '' ?>
+                                <?= $isPhone ? 'type="tel" maxlength="11" pattern="[0-9]{11}" title="Must be an 11-digit number"' : '' ?>
                                 <?= in_array($name, ['parent_name', 'parent_relationship', 'parent_contact']) ? 'required' : '' ?>
                             >
                         </div>
@@ -412,12 +484,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'emergency_contact_relationship' => 'Emergency Contact Relationship',
                         'emergency_contact_number' => 'Emergency Contact Number'
                     ] as $name => $label):
+                        $isPhone = in_array($name, $phoneFields, true);
                     ?>
                         <div class="col-md-4">
                             <label class="form-label">
                                 <?= e($label) ?>
                             </label>
-                            <input class="form-control" name="<?= $name ?>">
+                            <input
+                                class="form-control"
+                                name="<?= $name ?>"
+                                value="<?= e($_POST[$name] ?? '') ?>"
+                                <?= $isPhone ? 'type="tel" maxlength="11" pattern="[0-9]{11}" title="Must be an 11-digit number"' : '' ?>
+                            >
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -436,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label">
                                 <?= e($label) ?>
                             </label>
-                            <input class="form-control" name="<?= $name ?>">
+                            <input class="form-control" name="<?= $name ?>" value="<?= e($_POST[$name] ?? '') ?>">
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -451,6 +529,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="row">
                         <?php
+                        $selectedModalities = $_POST['distance_learning'] ?? [];
                         foreach ([
                             'Blended / Combination',
                             'Educational Television',
@@ -467,6 +546,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         type="checkbox"
                                         name="distance_learning[]"
                                         value="<?= e($modality) ?>"
+                                        <?= in_array($modality, $selectedModalities, true) ? 'checked' : '' ?>
                                     >
                                     <?= e($modality) ?>
                                 </label>
@@ -508,6 +588,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         name="certify"
                         value="1"
                         id="certify"
+                        <?= !empty($_POST['certify']) ? 'checked' : '' ?>
                         required
                     >
 

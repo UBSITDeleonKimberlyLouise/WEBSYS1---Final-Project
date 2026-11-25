@@ -26,7 +26,8 @@ $q = $pdo->prepare("
         ss.section_subject_id,
         g.grading_period,
         g.grade_value,
-        g.result_status, g.remarks
+        g.result_status,
+        g.remarks
     FROM enrollments e
     JOIN school_years sy
         ON sy.school_year_id = e.school_year_id
@@ -48,7 +49,10 @@ $q = $pdo->prepare("
 $q->execute([$lrn]);
 $rows = $q->fetchAll(PDO::FETCH_ASSOC);
 
+$terms = ['Term 1', 'Term 2', 'Term 3'];
 $subjects = [];
+$termTotals = array_fill_keys($terms, 0.0);
+$termCounts = array_fill_keys($terms, 0);
 
 foreach ($rows as $r) {
     $id = (int) $r['section_subject_id'];
@@ -61,9 +65,22 @@ foreach ($rows as $r) {
     }
 
     if ($r['grading_period'] !== null) {
-        $period = ['Prelim'=>'Term 1','Midterm'=>'Term 2','Finals'=>'Term 3'][$r['grading_period']] ?? $r['grading_period'];
-        $subjects[$id]['grades'][$period] = $r['grade_value'] ?? $r['result_status'];
+        $period = ['Prelim' => 'Term 1', 'Midterm' => 'Term 2', 'Finals' => 'Term 3'][$r['grading_period']] ?? $r['grading_period'];
+        $val = $r['grade_value'] ?? $r['result_status'];
+        $subjects[$id]['grades'][$period] = $val;
+
+        if (in_array($period, $terms, true) && is_numeric($val)) {
+            $termTotals[$period] += (float) $val;
+            $termCounts[$period]++;
+        }
     }
+}
+
+$gwaPerTerm = [];
+foreach ($terms as $p) {
+    $gwaPerTerm[$p] = $termCounts[$p] > 0
+        ? number_format($termTotals[$p] / $termCounts[$p], 2)
+        : null;
 }
 
 require 'includes/header.php';
@@ -93,9 +110,9 @@ require 'includes/header.php';
                 <thead>
                     <tr>
                         <th>Subject</th>
-                        <th>Term 1</th>
-                        <th>Term 2</th>
-                        <th>Term 3</th>
+                        <?php foreach ($terms as $p): ?>
+                            <th><?= e($p) ?></th>
+                        <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -103,7 +120,7 @@ require 'includes/header.php';
                         <tr>
                             <td><?= e($s['name']) ?></td>
 
-                            <?php foreach (['Term 1', 'Term 2', 'Term 3'] as $p): ?>
+                            <?php foreach ($terms as $p): ?>
                                 <td>
                                     <?= isset($s['grades'][$p]) && $s['grades'][$p] !== null
                                         ? e((string) $s['grades'][$p])
@@ -113,6 +130,14 @@ require 'includes/header.php';
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>GWA</td>
+                        <?php foreach ($terms as $p): ?>
+                            <td><?= $gwaPerTerm[$p] !== null ? e($gwaPerTerm[$p]) : '—' ?></td>
+                        <?php endforeach; ?>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     <?php endif; ?>
