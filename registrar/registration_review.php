@@ -1,4 +1,3 @@
-
 <?php
 
 chdir(dirname(__DIR__));
@@ -250,19 +249,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $search = trim($_GET['lrn'] ?? '');
 
-$sql = 'SELECT * FROM student_registration_applications';
+$sql = "SELECT * FROM student_registration_applications WHERE application_status = 'For Verification'";
 $params = [];
 
 if ($search !== '') {
-    $sql .= ' WHERE student_lrn LIKE ?';
+    $sql .= ' AND student_lrn LIKE ?';
     $params[] = '%' . $search . '%';
 }
 
-$sql .= "
-    ORDER BY
-        FIELD(application_status, 'For Verification', 'Approved', 'Rejected'),
-        submitted_at DESC
-";
+$sql .= ' ORDER BY submitted_at DESC';
 
 $q = $pdo->prepare($sql);
 $q->execute($params);
