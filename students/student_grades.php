@@ -89,7 +89,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>My Grades</h1>
-        <p>Grades for the current school year. Blank means no grade has been encoded.</p>
     </div>
 </div>
 
