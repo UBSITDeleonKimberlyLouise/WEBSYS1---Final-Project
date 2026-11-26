@@ -97,7 +97,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>Past Records</h1>
-        <p>Previous school-year subjects and grades · Read-only</p>
     </div>
 </div>
 
