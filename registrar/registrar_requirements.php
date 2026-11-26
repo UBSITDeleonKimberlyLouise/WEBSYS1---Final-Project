@@ -559,9 +559,6 @@ if (isset($_GET['embedded']) && $_GET['embedded'] === '1') {
 <?php if (!isset($_GET['embedded']) || $_GET['embedded'] !== '1'): ?>
     <div class="mb-3">
         <h5 class="mb-1">Requirements Review &amp; Student Accounts</h5>
-        <p class="text-muted small mb-0">
-            Review student documents, verify requirements, and manage student accounts.
-        </p>
     </div>
 <?php endif; ?>
 
