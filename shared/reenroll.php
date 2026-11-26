@@ -1,4 +1,3 @@
-
 <?php
 chdir(dirname(__DIR__));
 
@@ -301,12 +300,6 @@ if ($staff) {
 
 require 'includes/header.php';
 ?>
-
-<div class="page-heading">
-    <div>
-        <p>Use existing student records for the current school year.</p>
-    </div>
-</div>
 
 <?php if ($msg): ?>
     <div class="alert alert-success"><?= e($msg) ?></div>
