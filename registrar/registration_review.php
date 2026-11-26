@@ -271,10 +271,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>Review Parent Registrations</h1>
-        <p>
-            Search by LRN to find a submitted registration and check the physical
-            documents at school.
-        </p>
     </div>
 </div>
 
