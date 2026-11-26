@@ -61,7 +61,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>My Schedule</h1>
-        <p>My subjects and class schedule for the current school year.</p>
     </div>
 </div>
 
