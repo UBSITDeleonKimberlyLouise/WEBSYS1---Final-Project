@@ -138,15 +138,20 @@ require 'includes/header.php';
 @media print {
     .sidebar,
     .topbar,
-    .page-heading .btn,
+    .page-heading,
     .report-filters,
     .report-nav,
     .print-control {
         display: none !important;
     }
 
+    .app-layout,
     .main-content {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
         padding: 0 !important;
+        margin: 0 !important;
     }
 
     .card {
@@ -218,6 +223,9 @@ require 'includes/header.php';
     </div>
 </form>
 
+<div class="print-layout">
+    <img class="print-letterhead" src="../assets/letterhead.png" alt="ELTNHS letterhead">
+    <div class="print-content">
 <div class="card p-3">
     <h5><?= e($titles[$form]) ?></h5>
     <p class="text-muted">
@@ -265,6 +273,8 @@ require 'includes/header.php';
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+</div>
     </div>
 </div>
 

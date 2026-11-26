@@ -2004,7 +2004,6 @@ $applications = [];
                 id="registrar-report-frame"
                 title="Selected Registrar School Form"
                 style="width:100%;min-height:750px;border:0;display:block"
-                onload="prepareRegistrarReportFrame()"
             ></iframe>
         </div>
 
@@ -2051,6 +2050,7 @@ $applications = [];
                 var frame = document.getElementById('registrar-report-frame');
 
                 container.style.display = 'block';
+                frame.onload = prepareRegistrarReportFrame;
                 frame.src = '../admin/principal_reports.php?form=' + encodeURIComponent(form);
             }
 

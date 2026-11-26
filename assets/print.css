@@ -1,0 +1,68 @@
+@page {
+  size: A4;
+  margin: 0;
+}
+
+.print-letterhead {
+  display: none;
+}
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #fff !important;
+    font-size: 10px;
+  }
+
+  .print-layout {
+    position: relative;
+    z-index: 0;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    page-break-after: always;
+  }
+
+  .print-letterhead {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 210mm;
+    height: 297mm;
+    object-fit: fill;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .print-content {
+    position: relative;
+    z-index: 1;
+    min-height: 297mm;
+    padding: 53mm 10mm 38mm;
+  }
+
+  .print-content .card {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  .print-content .page-heading::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .print-content table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .print-content th,
+  .print-content td {
+    border: 1px solid #777;
+    overflow-wrap: anywhere;
+  }
+}

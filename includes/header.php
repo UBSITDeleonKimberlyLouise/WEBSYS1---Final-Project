@@ -146,6 +146,7 @@ function menuActive($url, $current, $currentModule, $currentPage)
     >
 
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="stylesheet" href="../assets/print.css">
 
     <style>
         .topbar-left {
