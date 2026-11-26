@@ -1,4 +1,3 @@
-
 <?php
 
 chdir(dirname(__DIR__));
@@ -117,9 +116,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>Student Masterlist</h1>
-        <p>
-            Search a student to display saved information and uploaded documents.
-        </p>
     </div>
 </div>
 
