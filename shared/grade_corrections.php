@@ -245,12 +245,6 @@ $rows = $pdo->query("
 require 'includes/header.php';
 ?>
 
-<div class="page-heading">
-    <div>
-        <p>Manage terms and review grade correction requests.</p>
-    </div>
-</div>
-
 <?php if ($error): ?>
     <div class="alert alert-danger">
         <?= e($error) ?>
