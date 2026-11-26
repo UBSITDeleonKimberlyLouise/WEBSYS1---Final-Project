@@ -81,7 +81,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>School Year Management</h1><a href="../shared/grade_corrections.php">Grading Management</a>
-        <p>Manage Current and Completed school years. Completed records remain available in the archive.</p>
     </div>
 </div>
 
