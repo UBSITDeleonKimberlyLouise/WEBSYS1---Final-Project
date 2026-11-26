@@ -203,11 +203,6 @@ require 'includes/header.php';
     <div class="card p-3">
         <h5>Upload or Replace Document</h5>
 
-        <p>
-            You can also submit a physical copy at school.
-            The Registrar can upload it for you.
-        </p>
-
         <form method="post" enctype="multipart/form-data">
             <input
                 type="hidden"

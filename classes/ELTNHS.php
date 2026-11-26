@@ -1,7 +1,6 @@
 <?php
 chdir(dirname(__DIR__));
 
-// Small class containing common database actions used by the module pages.
 class ELTNHS {
     private $pdo;
 
