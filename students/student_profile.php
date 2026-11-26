@@ -275,7 +275,6 @@ require 'includes/header.php';
 <div class="page-heading">
     <div>
         <h1>My Profile</h1>
-        <p>Your student information and enrollment documents.</p>
     </div>
 </div>
 
